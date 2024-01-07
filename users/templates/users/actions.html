@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Actions{% endblock title %}
+
+{% block content %}
+    {% if actions %}
+        {% for a in actions %}
+            <div class="card w-75 mb-2">
+                <div class="card-body bg-dark rounded">
+                    <h5 class="card-title text-light">{{ a.owner }}</h5>
+                    <p class="card-text text-light">{{ a.act }}</p>
+                    {% if not a.image %}
+                        <img src="{% static 'images/6596121.png' %}"
+                        alt="Generic placeholder image" class="img-fluid"
+                        style="width: 100px; border-radius: 10px;">
+                    {% else %}
+                        <img src="{{ a.image.url }}"
+                        alt="Generic placeholder image" class="img-fluid"
+                        style="width: 100px; border-radius: 10px;">
+                    {% endif %}
+                    
+                    <p class="card-text"><small class="text-muted">{{ a.created }}</small></p>
+                    <form action="{% url 'users:delete_act' a.id %}" method="post">
+                        {% csrf_token %}
+                        <button class="btn btn-primary">Delete</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p class="h1">Empty list</p> 
+    {% endif %}
+{% endblock content %}

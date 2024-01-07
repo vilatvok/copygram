@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+{% load static %}
+{% block title %}Post{% endblock title %}
+
+{% block content %}
+    <div class="card" style="width: 22rem;">
+        <img src="{{ post.photo.url }}" class="card-img-top" alt="..." height="225">
+        <div class="card-body bg-dark">
+            <p class="card-text text-light">{{ post.description }}</p>
+            <p class="card-text text-light">{{ total_views }}</p>
+            <p class="card-text text-light">
+                <a class="btn btn-primary" 
+                href="{% url 'mainsite:like' post.id %}" 
+                role="button">Like{{ likes|pluralize }} {{ likes }}</a>
+                <a class="btn btn-primary" 
+                href="{% url 'mainsite:edit' post.id %}" 
+                role="button">Edit</a>
+                {% if post.owner == request.user %}
+                    <form action="{% url 'mainsite:delete' post.id %}" method="post">
+                        {% csrf_token %}
+                        <button class="btn btn-primary">Delete</button>
+                    </form>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% if no_comment %}
+        <div class="row d-flex justify-content-left mt-5">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-0 border" style="background-color: #f0f2f5;">
+                    <div class="card-body p-4">
+                    <form action="{% url 'mainsite:add_comment' post.id %}" method="get">
+                        <div class="form-outline mb-4">
+                            <input type="text" id="addANote" class="form-control" name='q' placeholder="Type comment..." />
+                            <button class="btn btn-primary">Send</button>
+                        </div>
+                    </form>
+                    {% for comment in comments %}
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <p>{{ comment.text }}</p>
+                                <div class="d-flex justify-content-between">
+                                    <div class="d-flex flex-row align-items-center">
+                                        {% if comment.owner.avatar %}
+                                            <img src="{{ comment.owner.avatar.url }}" alt="avatar" width="25"
+                                                height="25" />
+                                        {% else %}
+                                            <img src="{% static 'images/6596121.png' %}" alt="avatar" width="25"
+                                                height="25" />
+                                        {% endif %}
+                                        <p class="small mb-0 ms-2">{{ comment.owner.username }}</p>
+                                    </div>
+                                    <div class="d-flex flex-row align-items-center">
+                                        <p class="small text-muted mb-0">{{ comment.created }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock content %}

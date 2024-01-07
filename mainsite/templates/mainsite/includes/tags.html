@@ -1,0 +1,6 @@
+
+{% for tag in tags %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'mainsite:tags' tag.id %}">{{ tag }}</a>
+    </li>
+{% endfor %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Followers{% endblock title %}
+
+{% block content %}
+    {% for user in users %}
+        <div class="row d-flex align-items-center h-100 mb-2">
+            <div class="col col-md-9 col-lg-7 col-xl-5">
+                <div class="card bg-dark" style="border-radius: 15px;">
+                    <div class="card-body p-4">
+                        <div class="d-flex text-black">
+                            <div class="flex-shrink-0">
+                                <figure class="figure">
+                                    {% if not user.avatar %}
+                                        <a href={% url 'users:profile' user.id %}><img src="{% static 'images/6596121.png' %}"
+                                        alt="Generic placeholder image" class="img-fluid"
+                                        style="width: 100px; border-radius: 10px;"></a>
+                                    {% else %}
+                                        <a href={% url 'users:profile' user.id %}><img src="{{ user.avatar.url }}"
+                                        alt="Generic placeholder image" class="img-fluid"
+                                        style="width: 100px; border-radius: 10px;"></a>
+                                    {% endif %}
+                                    {% if user.online %}
+                                        <figcaption class="figure-caption">Online</figcaption>
+                                    {% else %}
+                                        <figcaption class="figure-caption">Offline</figcaption>
+                                    {% endif %} 
+                                </figure>    
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-1 text-light">{{ user.username }}</h5>
+                                <p class="mb-2 pb-1 text-light">{{ user.first_name }} {{ user.last_name }}</p>
+                                {% with count=user.user_to.count %}
+                                    <p class="mb-2 pb-1 text-light">{{ count }} follower{{ count|pluralize }}</p>
+                                {% endwith %}
+                                <div class="d-flex pt-1">
+                                    {% if user != request.user %}
+                                        <a class="btn btn-primary flex-grow-1" 
+                                            href="{% url 'users:follow' user.id %}" 
+                                            role="button">Follow</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>  
+    {% endfor %}
+
+{% endblock content %}

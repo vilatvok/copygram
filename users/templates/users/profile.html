@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+{% load bootstrap5 %}
+
+{% block title %}Profile{% endblock title %}
+
+{% block content %}
+    {% if blocked %}
+        <p class="h1">Error</p>
+    {% else %}
+        <div class="row d-flex align-items-center h-100">
+            <div class="col col-md-9 col-lg-7 col-xl-5">
+                <div class="card bg-dark" style="border-radius: 15px;">
+                    <div class="card-body p-4">
+                        <div class="d-flex text-black">
+                            <div class="flex-shrink-0"> 
+                                {% if not user.avatar %}
+                                    <img src="{% static 'images/6596121.png' %}"
+                                        alt="Generic placeholder image" class="img-fluid"
+                                        style="width: 100px; border-radius: 10px;">
+                                {% else %}
+                                    <img src="{{ user.avatar.url }}"
+                                        alt="Generic placeholder image" class="img-fluid"
+                                        style="width: 100px; border-radius: 10px;">
+                                {% endif %}
+                                {% if user.online %}
+                                    <figcaption class="figure-caption">Online</figcaption>
+                                {% else %}
+                                    <figcaption class="figure-caption">Offline</figcaption>
+                                {% endif %} 
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-1 text-light">{{ user.username }}</h5>
+                                <p class="mb-2 pb-1 text-light">{{ user.first_name }} {{ user.last_name }}</p>
+                                {% with f=followers.count %}
+                                    <p class="mb-2 pb-1 text-light"><a href="{% url 'users:followers' user.id %}">{{ f }} follower{{ f|pluralize }}</a></p>
+                                {% endwith %}
+                                {% with f=following.count %}
+                                    <p class="mb-2 pb-1 text-light"><a href="{% url 'users:following' user.id %}">{{ f }} following</a></p>
+                                {% endwith %}
+                                <div class="d-flex pt-1">
+                                    {% if user == request.user %}
+                                        <a class="btn btn-danger me-1 flex-grow-1" 
+                                            href="{% url 'users:edit_profile' user.id %}" 
+                                            role="button">Edit</a>
+                                        <a class="btn btn-success me-1 flex-grow-1" 
+                                            href="{% url 'mainsite:create' %}" 
+                                            role="button">Add</a>
+                                        <a class="btn btn-light flex-grow-1" 
+                                            href="{% url 'mainsite:create_story' %}" 
+                                            role="button">Add story</a>
+                                    {% else %}
+                                        <a class="btn btn-primary me-1 flex-grow-1" 
+                                            href="{% url 'users:follow' user.id %}" 
+                                            role="button">Follow</a>
+                                        <a class="btn btn-primary flex-grow-1" 
+                                            href="{% url 'users:block' user.id %}" 
+                                            role="button">Block</a>
+                                    {% endif %}
+                                </div>  
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> 
+        <div class="row row-cols-1 row-cols-md-5 g-4 mt-2">
+            {% for post in posts %}
+                <div class="col">
+                    <div class="card h-100">
+                        <a href="{{ post.get_absolute_url }}">
+                            <img class="card-img-top" src="{{ post.photo.url }}" alt="Card image cap" height="225">
+                        </a>
+                        <div class="card-body bg-dark">
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% if stories %}
+            <p class="h1">Stories:</p>
+            <div class="row row-cols-1 row-cols-md-5 g-4">
+                {% for story in stories %}
+                    <div class="col">
+                        <div class="card h-100">
+                            <div class="card-body bg-dark">
+                            </div>
+                            <img class="card-img-top" src="{{ story.img.url }}" alt="Card image cap" height="225">
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% if user == request.user %}
+            <p>
+                <a class="btn btn-primary" data-bs-toggle="collapse" href="#multiCollapseExample1" role="button" aria-expanded="false" aria-controls="multiCollapseExample1">Recommendations</a>
+            </p>
+            {% for s in suggestions %}
+                <div class="row row-cols-1 row-cols-md-6 g-4">
+                    <div class="col">
+                        <div class="collapse multi-collapse" id="multiCollapseExample1">
+                            <div class="card-body bg-dark text-light"> 
+                                {% if not s.avatar %}
+                                    <img src="{% static 'images/6596121.png' %}"
+                                        alt="Generic placeholder image" class="img-fluid"
+                                        style="width: 100px; border-radius: 10px;">
+                                {% else %}
+                                    <img src="{{ s.avatar.url }}"
+                                        alt="Generic placeholder image" class="img-fluid"
+                                        style="width: 100px; border-radius: 10px;">
+                                {% endif %}
+                                <a href="{% url 'users:profile' s.id%}">{{ s }}<a>
+                                <div class="d-flex pt-1">
+                                    <a class="btn btn-primary me-1 flex-grow-1" 
+                                        href="{% url 'users:follow' s.id %}" 
+                                        role="button">Follow</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endif %}
+
+{% endblock content %}

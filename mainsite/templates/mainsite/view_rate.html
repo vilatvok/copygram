@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <ul>
+    {% for post, score in most_viewed %}
+        <li>{{ post.description }} - {{ score }} view{{ score|pluralize }}</li>
+    {% endfor %}
+    </ul>
+{% endblock content %}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock title %}</title>
+    {% load bootstrap5 %} {% bootstrap_css %} {% bootstrap_javascript %}
+    {% load posts_tags %}
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'mainsite:posts' %}">COPYGRAM</a>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" 
+                                role="button" data-bs-toggle="dropdown" aria-expanded="false">Profile</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'users:profile' request.user.id %}">View</a></li>
+                                <li><a class="dropdown-item" href="{% url 'users:logout_user' %}">Logout</a></li>
+                                <li><a class="dropdown-item" href="{% url 'users:blocked' request.user.id %}">Blocked</a></li>
+                                <li><a class="dropdown-item" href="{% url 'users:res' %}">Statistics</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:actions' %}">Actions</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'mainsite:most_viewed' %}">Most</a>
+                        </li>
+                        {% get_tags %}
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:login_user' %}">Login</a>
+                        </li>                    
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:register' %}">Register</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+            <form action="{% url 'users:search' %}" method="get" class="d-flex">
+                <input type="search" id="form1" class="form-control me-2" name="q"/>
+                <button class="btn btn-primary">Search</button>
+            </form>
+        </div>
+    </nav>
+    <div class="container-fluid mt-3">
+        {% block content %}{% endblock content %}
+    </div>
+</body>
+</html>
