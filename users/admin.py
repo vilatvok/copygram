@@ -11,14 +11,7 @@ class UserAdmim(UserAdmin):
         (None, {'fields': ('slug', 'username', 'password')}),
         (
             ('Personal info'),
-            {'fields': (
-                'first_name', 
-                'last_name', 
-                'email', 
-                'avatar', 
-                'bio', 
-                'gender'
-            )},
+            {'fields': ('first_name', 'last_name', 'email', 'avatar', 'bio', 'gender')},
         ),
         (
             ('Permissions'),
@@ -32,14 +25,7 @@ class UserAdmim(UserAdmin):
                 ),
             },
         ),
-        (('Important dates'), 
-        {'fields': (
-            'last_login', 
-            'date_joined', 
-            'last_activity', 
-            'private_account', 
-            'is_online'
-        )}),
+        (('Important dates'), {'fields': ('last_login', 'date_joined', 'last_activity', 'private_account')}),
     )
     prepopulated_fields = {'slug': ['username']}
 

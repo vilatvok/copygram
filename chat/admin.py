@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from chat.models import RoomChat, PrivateChat
+from chat.models import Message, RoomChat, MessageImages
 
 
 @admin.register(RoomChat)
@@ -12,4 +12,5 @@ class RoomChatAdmin(admin.ModelAdmin):
         return room.users.count()
     
 
-admin.site.register(PrivateChat)
+admin.site.register(Message)
+admin.site.register(MessageImages)

@@ -36,3 +36,9 @@
       {% endfor %}
    </div>
 {% endblock content %}
+
+{% block jscontent %}
+   {% if request.user.is_authenticated %}
+      <script src="{% static 'js/set_socket.js' %}"></script>
+   {% endif %}
+{% endblock jscontent %}

@@ -1,5 +1,5 @@
 from django.urls import path, reverse_lazy, include
-from django.contrib.auth import views
+from django.contrib.auth.views import LogoutView, PasswordChangeView
 
 from users.views import templates
 
@@ -8,7 +8,7 @@ app_name = 'users'
 
 urlpatterns = [
     path('login/', templates.LoginUserView.as_view(), name='login_user'),
-    path('logout/', views.LogoutView.as_view(), name='logout_user'),
+    path('logout/', LogoutView.as_view(), name='logout_user'),
     path('register/', templates.RegisterView.as_view(), name='register'),
     path('<slug:user_slug>/', 
         include(
@@ -30,28 +30,12 @@ urlpatterns = [
         ),
     ),
     path('change_password/',
-        views.PasswordChangeView.as_view(
+        PasswordChangeView.as_view(
             success_url=reverse_lazy('mainsite:posts'),
             template_name='users/change_password.html',
         ),
         name='change_password',
-    ),
-    path('password-reset/', 
-        views.PasswordResetView.as_view(
-            template_name="users/password_reset.html",
-            email_template_name='users/password_reset_email.html',
-            success_url=reverse_lazy('users:password_reset_done')),
-        name='password_reset'),
-    path('password-reset/done/',
-        views.PasswordResetDoneView.as_view(template_name="users/password_reset_done.html"),
-        name='password_reset_done'),
-    path('password-reset/<uidb64>/<token>/', 
-        views.PasswordResetConfirmView.as_view(
-            template_name="users/password_reset_confirm.html",
-            success_url=reverse_lazy('users:login'),
-        ), 
-        name='password_reset_confirm'
-    ),
+    ),  
     path('two_fa/', templates.SetupTwoFaView.as_view(), name='enable_fa'),
     path('disable_two_fa/', templates.DisableTwoFaView.as_view(), name='disable_fa'),
     path('actions/', templates.ActionsView.as_view(), name='actions'),

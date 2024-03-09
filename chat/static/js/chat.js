@@ -45,11 +45,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                                 style="word-wrap: break-word; max-width: 250px;">
                                 <span class="fw-bold">Me</span>
                                 <br>
-                                ${  
-                                    data.files
-                                    ? data.files.map(file => `
-                                        <a href="/media/messages/${file[1]}"><img src="/media/messages/${file[1]}" style="width:200px; height:100%"></a>
-                                    `).join('') : ''
+                                ${
+                                    data.files.map(file => `
+                                        <img src="/media/${file}" style="width:200px; height:100%">
+                                    `).join('')
                                 }
                                 ${data.message}</p>
                             </div>
@@ -71,10 +70,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
                                     <span class="fw-bold">${data.user}</span>
                                     <br>
                                     ${
-                                        data.files
-                                        ? data.files.map(file => `
-                                            <a href="/media/messages/${file[1]}"><img src="/media/messages/${file[1]}" style="width:200px; height:100%"></a>
-                                        `).join('') : ''
+                                        data.files.map(file => `
+                                            <img src="/media/${file}" style="width:200px; height:100%">
+                                        `).join('')
                                     }
                                     ${data.message}
                                 </p>
@@ -91,23 +89,33 @@ document.addEventListener('DOMContentLoaded', (event) => {
     chatSocket.onclose = function(event) {
         console.error('Chat socket closed unexpectedly');
     };
-    function toDataURL(file, callback) {
-        var reader = new FileReader();
-        reader.onload = function () {
-            var dataURL = reader.result;
-            callback(dataURL);
-        }
-        reader.readAsDataURL(file);
-    }
 
-    document.querySelector('#message-sent').onclick = function (event) {
-        const messageInput = document.querySelector('#message-input');
-        const message = messageInput.value;
+    function send_message(event) {
+        document.querySelector('#message-sent').onclick = function(event) {
+            const messageInput = document.querySelector('#message-input');
+            const message = messageInput.value;
 
-        const files = document.getElementById('customFile');
-        if (message.trim() === "" && files.files.length === 0) {
-            return;
-        } else if (files.files.length === 0) {
+            if (message.trim() === "") {
+                alert("Please enter a message before sending.");
+                return;
+            }
+
+            const files = document.getElementById('customFile');
+
+            const files_list = [];
+            for (const file of files.files) {
+                const reader = new FileReader();
+    
+                reader.onload = function (e) {
+                    const fileContent = e.target.result;
+                    
+                };
+    
+                // Read the file as a data URL
+                files_list.push(reader.readAsDataURL(file));
+            }
+            
+            /////////////////////////
             chatSocket.send(JSON.stringify({
                 'action': 'send_message',
                 'url': url_name,
@@ -115,38 +123,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 'user': user,
                 'avatar': avatar,
                 'message': message,
+                'files': files_list
             }))
+            
             messageInput.value = '';
-        } else {
-            const promises = [];
-            const files_list = [];
-            for (const file of files.files) {
-                const promise = new Promise((resolve) => {
-                    toDataURL(file, function (dataURL) {
-                        files_list.push([dataURL, file.name]);
-                        resolve(); // Resolve the promise once the message is sent
-                    });
-                });
-                promises.push(promise);
-            }
-
-            // Wait for all promises to resolve before clearing input values
-            Promise.all(promises).then(() => {
-                chatSocket.send(JSON.stringify({
-                    'action': 'send_message',
-                    'url': url_name,
-                    'chat': chat_id,
-                    'user': user,
-                    'avatar': avatar,
-                    'message': message,
-                    'files': files_list,
-                }));
-                console.log(files_list);
-                messageInput.value = '';
-                files.value = '';
-            });
-        }
-    };
+            files.value = '';
+        };
+    }
+    send_message();
 
     function clear_chat(event) {
         document.getElementById('clear-chat').addEventListener('click', function(event) {
@@ -160,9 +144,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 
     if (url_name == 'room') {
-        if (user == owner) {
-            clear_chat();
-        } 
         document.getElementById('leave-chat').addEventListener('click', function(event) {
             const room = {
                 'action': 'leave_room',
@@ -171,6 +152,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
             };
             chatSocket.send(JSON.stringify(room));
         })
+        if (user == owner) {
+            clear_chat();
+        }    
     } else {
         clear_chat();
         if (count_messages == 0) {
@@ -183,7 +167,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 }
                 return 'Bye';
             }
-            
         }
     }
 })

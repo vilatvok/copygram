@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 
 from taggit.models import Tag
 
-from mainsite.models import Comment, Story
+from mainsite.models import Post, Comment, PostMedia, Story
 from mainsite.serializers import (
     CommentSerializer, 
     PostDetailSerializer, 
@@ -38,14 +38,23 @@ class PostViewSet(ModelViewSet):
             return PostListSerializer
         return PostDetailSerializer
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data, 
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        files = serializer.validated_data['files']
         serializer.save(owner=self.request.user)
+        for file in files:
+            PostMedia.objects.create(post=serializer.instance, file=file)
+        return Response(serializer.data, status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
         response = super().list(request, *args, **kwargs)
-        response_data = {'posts': response.data}
+        response_data = {'result': response.data}
 
         # Set redis cache for showing posts count
         redis_cache = cache.get(settings.TOTAL)
@@ -55,8 +64,9 @@ class PostViewSet(ModelViewSet):
             total_posts = queryset.aggregate(total=Count('id')).get('total')
             cache.set(settings.TOTAL, total_posts, 60)
 
+        response.data = response_data
         response_data['total_posts'] = total_posts
-        return Response(response_data)
+        return response
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -117,16 +127,18 @@ class TagViewSet(ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(
-            queryset, 
-            many=True, 
-            fields=['name', 'posts']
-        )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, fields=('url', 'name'))
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, fields=('url', 'name'))
         return Response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(instance, fields=['url'])
+        serializer = self.get_serializer(instance, fields=('name', 'posts'))
         return Response(serializer.data)
     
 
@@ -143,10 +155,13 @@ class StoryViewSet(
 
     def get_queryset(self):
         return (
-            Story.objects.select_related('owner').
-            exclude(owner__in=self.request.session['blocked'])
+            Story.objects.exclude(owner__in=self.request.session['blocked']).
+            select_related('owner')
         )
 
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(owner=request.user)
         delete_story_scheduler(serializer.instance.id, serializer.instance.date)
+        return Response(serializer.data, status.HTTP_201_CREATED)

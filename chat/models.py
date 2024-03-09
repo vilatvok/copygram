@@ -46,7 +46,7 @@ class Message(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     chat = GenericForeignKey('content_type', 'object_id')
-
+    
 
 class MessageImages(models.Model):
     message = models.ForeignKey(
@@ -54,4 +54,4 @@ class MessageImages(models.Model):
         on_delete=models.CASCADE, 
         related_name='files'
     )
-    file = models.FileField(blank=True, upload_to='messages/')
+    file = models.FileField(upload_to='messages/')

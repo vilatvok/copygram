@@ -6,7 +6,7 @@ from taggit.models import Tag
 
 from common.utils import set_serializer_fields
 
-from mainsite.models import Post, Comment, PostMedia, Story
+from mainsite.models import Post, Comment, Story
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -15,6 +15,13 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['owner', 'text', 'date']
+
+    def __init__(self, instance=None, data=empty, **kwargs):
+        fields = kwargs.pop('fields', None)
+        super().__init__(instance, data, **kwargs)
+        
+        if fields:
+            set_serializer_fields(fields, self.fields)
                 
 
 class BasePostSerializer(TaggitSerializer, serializers.HyperlinkedModelSerializer):
@@ -27,7 +34,7 @@ class BasePostSerializer(TaggitSerializer, serializers.HyperlinkedModelSerialize
 
 
 class PostMediaSerializer(serializers.Serializer):
-    file = serializers.FileField(allow_empty_file=False, use_url=False)
+    file = serializers.FileField()
 
 
 class PostListSerializer(BasePostSerializer):
@@ -36,20 +43,7 @@ class PostListSerializer(BasePostSerializer):
         child=serializers.CharField(allow_blank=True)
     )
     file = serializers.CharField(read_only=True)
-    files = serializers.ListField(
-        child=serializers.FileField(allow_empty_file=False, use_url=False),
-        write_only=True
-    )
-
-    def create(self, validated_data):
-        """Lists are not currently supported in HTML input."""
-        files = validated_data.pop("files")
-        post = Post.objects.create(**validated_data)
-        files_list = []
-        for file in files:
-            files_list.append(PostMedia(post=post, file=file))
-        PostMedia.objects.bulk_create(files_list)
-        return post
+    files = PostMediaSerializer(write_only=True, many=True)
 
 
 class PostDetailSerializer(BasePostSerializer):
@@ -74,8 +68,12 @@ class TagSerializer(serializers.HyperlinkedModelSerializer):
     def __init__(self, instance=None, data=empty, **kwargs):
         fields = kwargs.pop('fields', None)
         super().__init__(instance, data, **kwargs)
+        
         if fields:
-            set_serializer_fields(fields, self.fields)
+            allowed = set(fields)
+            old = set(self.fields)
+            for field in old - allowed:
+                self.fields.pop(field)
 
     def get_posts(self, obj):
         queryset = (

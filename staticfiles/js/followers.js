@@ -25,4 +25,34 @@ document.addEventListener('DOMContentLoaded', (event) => {
             })
       })
    })
+   const protocol = window.location.protocol == 'https:' ? 'wss': 'ws'
+   const statusSocket = new WebSocket(
+      protocol + '://' + window.location.host + '/ws/status/'
+   );
+
+   statusSocket.onopen = function(event) {
+      console.log('Socket connected');
+      statusSocket.send(JSON.stringify({
+          'user': user,
+          'status': 'Online',
+      }))
+   };
+  
+   statusSocket.onclose = function(event) {
+         console.error('Socket closed unexpectedly');
+   };
+   
+   statusSocket.onmessage = function(event) {
+      const data = JSON.parse(event.data)
+      const users_ = document.querySelectorAll('.rounded-pill')
+      users_.forEach(mark => {
+         const mark_one = mark.getAttribute('id')
+         const split_one = mark_one.split('-')
+         const __user = split_one[1]
+         if (data.users.includes(__user)) {
+            const elem = document.querySelector(`[id="status-${__user}"]`)
+            elem.innerHTML = 'Online'
+         }
+      })
+   };
 })

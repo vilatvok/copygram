@@ -5,7 +5,7 @@
 
 {% block text_form %}
    <button class="btn btn-success">Save</button>
-   {% if perms.users.social_auth %}
+   {% if not perms.users.social_auth %}
       <a class="btn btn-success" href="{% url 'users:change_password' %}">Change password</a>
    {% endif %}
    {% if is_enable %}

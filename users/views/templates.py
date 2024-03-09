@@ -1,3 +1,5 @@
+import redis
+
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.db.models import Q, Count, Exists, OuterRef, Subquery
@@ -81,7 +83,6 @@ class RegisterView(CreateView):
             password=form.cleaned_data['password1']
         )
         login(self.request, user)
-        set_blocked(user, self.request)
         return response
     
 
@@ -168,8 +169,8 @@ class ActivityView(ListView):
             post=OuterRef('pk')
         ).values('file')[:1]
         posts_queryset = (
-            user.like.select_related('owner').prefetch_related('tags').
-            annotate(file=Subquery(subquery))
+            user.like.annotate(file=Subquery(subquery)).
+            select_related('owner').prefetch_related('tags')
         )
         comments_queryset = user.comment_owner.all()
         return {'posts': posts_queryset, 'comments': comments_queryset}
@@ -180,11 +181,11 @@ class ActionsView(ListView):
     context_object_name = 'actions'
 
     def get_queryset(self):
-        user = self.request.user
-        actions = (
-            Action.objects.select_related('owner', 'content_type').
-            filter(Q(post__owner=user) |Q(user=user)).update(unread=False)
-        )
+        actions = Action.objects.filter(
+            Q(post__owner=self.request.user) |
+            Q(user=self.request.user)
+        ).select_related('owner', 'content_type')
+        actions.update(unread=False)
         return actions
     
 

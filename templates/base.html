@@ -20,39 +20,33 @@
                <ul class="navbar-nav mr-auto">
                   {% if user.is_authenticated %}
                      <li class="nav-item dropdown">
-                        {% with user=request.user %}
-                           <a class="nav-link dropdown-toggle" href="#" 
-                                 role="button" data-bs-toggle="dropdown" aria-expanded="false">{{ user.username }}</a>
-                           <ul class="dropdown-menu">
-                              <li>
-                                 <a class="dropdown-item" href="{% url 'users:profile' user.slug %}">Profile</a>
-                              </li>
-                              <li>
-                                 <a class="dropdown-item" href="{% url 'users:logout_user' %}">Logout</a>
-                              </li>
-                              <li>
-                                 <a class="dropdown-item" href="{% url 'users:blocked' user.slug %}">Blocked</a>
-                              </li>
-                              <li>
-                                 <a class="dropdown-item" href="{% url 'users:activity' user.slug %}">Activity</a>
-                              </li>
-                           </ul>
-                        {% endwith %}
+                        <a class="nav-link dropdown-toggle" href="#" 
+                              role="button" data-bs-toggle="dropdown" aria-expanded="false">{{ request.user.username }}</a>
+                        <ul class="dropdown-menu">
+                           <li>
+                              <a class="dropdown-item" href="{% url 'users:profile' request.user.slug %}">Profile</a>
+                           </li>
+                           <li>
+                              <a class="dropdown-item" href="{% url 'users:logout_user' %}">Logout</a>
+                           </li>
+                           <li>
+                              <a class="dropdown-item" href="{% url 'users:blocked' request.user.slug %}">Blocked</a>
+                           </li>
+                           <li>
+                              <a class="dropdown-item" href="{% url 'users:activity' request.user.slug %}">Activity</a>
+                           </li>
+                        </ul>
                      </li>
                      <li class="nav-item">
                         <a class="nav-link" href="{% url 'users:actions' %}">Actions
-                           {% if unread_actions %}<span id="unread-messages">{{ unread_actions }}</span>{% endif %}
+                           {% if unread_messages %}<span id="unread-messages">{{ unread_messages }}</span>{% endif %}
                         </a>
                      </li>
                      <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chat:chats' %}">Chats
-                           {% if unread_chat_messages %}<span id="unread-messages">{{ unread_chat_messages }}</span>{% endif %}
-                        </a>
+                        <a class="nav-link" href="{% url 'chat:chats' %}">Chats</a>
                      </li>
                      <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chat:rooms' %}">Rooms
-                           {% if unread_room_messages %}<span id="unread-messages">{{ unread_room_messages }}</span>{% endif %}
-                        </a>
+                        <a class="nav-link" href="{% url 'chat:rooms' %}">Rooms</a>
                      </li>
                   {% else %}
                     <li class="nav-item">

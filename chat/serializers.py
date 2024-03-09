@@ -20,11 +20,14 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class BaseChatSerializer(serializers.ModelSerializer):
+    messages = MessageSerializer(many=True, read_only=True)
+
     def __init__(self, instance=None, data=empty, **kwargs):
         fields = kwargs.pop('fields', None)
         context = kwargs.pop('context', {})
         self.user_id = context['user_id']
         super().__init__(instance, data, **kwargs)
+        
         if fields:
             set_serializer_fields(fields, self.fields)
 
@@ -54,4 +57,4 @@ class PrivateChatSerializer(BaseChatSerializer):
 
     class Meta:
         model = PrivateChat
-        fields = ['id', 'user']
+        fields = ['id', 'user', 'messages']

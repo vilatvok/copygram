@@ -9,7 +9,7 @@ from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.views.decorators.http import require_POST
 
 from chat.mixins import BaseChatMixin
-from chat.models import Message, RoomChat, PrivateChat
+from chat.models import Message, MessageImages, RoomChat, PrivateChat
 from chat.forms import RoomForm, EditRoomForm
 
 
@@ -45,9 +45,9 @@ class RoomChatsView(ListView):
     context_object_name = 'rooms'
 
     def get_queryset(self):
-        return RoomChat.objects.only('id', 'name', 'messages').filter(
+        return RoomChat.objects.filter(
             users__in=[self.request.user]
-        )
+        ).select_related('owner')
 
 
 class PrivateChatView(BaseChatMixin):
@@ -55,7 +55,6 @@ class PrivateChatView(BaseChatMixin):
     context_object_name = 'chat'
 
     def get_object(self, queryset=None):
-        user = self.request.user
         try:
             chat = (
                 PrivateChat.objects.select_related('first_user', 'second_user').
@@ -63,19 +62,18 @@ class PrivateChatView(BaseChatMixin):
             )
         except:
             raise Http404('Not found or this chat was deleted')
-        if user not in [chat.first_user, chat.second_user]:
+        if self.request.user not in [chat.first_user, chat.second_user]:
             raise PermissionDenied("You can't see this chat")
         return chat
-    
+
 
 class RoomChatView(BaseChatMixin):
     url_name = 'room'
     context_object_name = 'chat'
 
     def get_object(self, queryset=None):
-        user = self.request.user
         room = RoomChat.objects.get(id=self.kwargs['chat_id'])
-        if user not in room.users.all():
+        if self.request.user not in room.users.all():
             raise PermissionDenied("You can't see this room")
         return room
 
@@ -108,7 +106,7 @@ class RoomUsersView(ListView):
     pk_url_kwarg = 'room_id'
 
     def get_queryset(self):
-        room = RoomChat.objects.only('users').get(id=self.kwargs['room_id'])
+        room = RoomChat.objects.get(id=self.kwargs['room_id'])
         query = room.users.all()
         return query.annotate(follower_count=Count('user_to'))
 

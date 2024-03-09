@@ -23,13 +23,7 @@
                   </div>
                   <div class="flex-grow-1 ms-3">
                      <h5 class="mb-1 text-light">{{ user.username }}
-                        <span class="badge rounded-pill bg-success">
-                           {% if user.is_online %}
-                              Online
-                           {% else %}
-                              Offline
-                           {% endif %}
-                        </span>
+                        <span class="badge rounded-pill bg-success">Offline</span>
                      </h5>
                      <p class="mb-2 pb-1 text-light">{{ user.first_name }} {{ user.last_name }}</p>
                      <p class="mb-2 pb-1 text-muted">{{ user.bio }}</p>
@@ -174,6 +168,7 @@
       const users_slug = '{{ user.slug }}'
       const curr_user = '{{ request.user }}'
    </script>
+   <script src="{% static 'js/status.js' %}"></script>
    {% if user == request.user %}
       <script src="{% static 'js/recommend.js' %}"></script>
    {% else %}

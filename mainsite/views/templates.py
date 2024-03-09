@@ -31,7 +31,7 @@ class PostsView(ListView):
     
         
 class PostView(DetailView):
-    queryset = Post.objects.select_related('owner').prefetch_related('tags')
+    queryset = Post.objects.all().select_related('owner').prefetch_related('tags')
     template_name = 'mainsite/post.html'
     context_object_name = 'post'
     pk_url_kwarg = 'post_id'
@@ -56,8 +56,8 @@ class PostView(DetailView):
 
         if context['post'].is_comment:
             context['comments'] = (
-                Comment.objects.select_related('owner').
-                filter(post=self.kwargs['post_id'])
+                Comment.objects.filter(post=self.kwargs['post_id']).
+                select_related('owner')
             )
         else:
             context['comments'] = None
@@ -71,8 +71,8 @@ class TagPostsView(ListView):
 
     def get_queryset(self):
         return (
-            Post.objects.select_related('owner').prefetch_related('tags').
-            filter(tags__name__in=[self.kwargs['tag_slug']])
+            Post.objects.filter(tags__name__in=[self.kwargs['tag_slug']]).
+            select_related('owner').prefetch_related('tags')
         )
 
 
@@ -125,10 +125,8 @@ def create_post(request):
             obj = form.save(commit=False)
             obj.owner = request.user
             obj.save()
-            files = []
             for media in request.FILES.getlist('files'):
-                files.append(PostMedia(post=obj, file=media))
-            PostMedia.objects.bulk_create(files)
+                PostMedia.objects.create(file=media, post=obj)
             return redirect('users:profile', request.user.slug)
     else:
         form = PostForm()

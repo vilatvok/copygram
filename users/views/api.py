@@ -1,24 +1,17 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count, Subquery, OuterRef
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_str
-from django.contrib.auth.tokens import default_token_generator
-
 from django_filters.rest_framework import DjangoFilterBackend
 
-from rest_framework import status, filters
-from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework import status, filters
 from rest_framework.pagination import PageNumberPagination
 
 from common.utils import get_posts, create_action
 
 from users.serializers import (
-    ActionSerializer,
-    PasswordResetConfirmSerializer,
-    PasswordResetSerializer, 
+    ActionSerializer, 
     UserCreateSerializer, 
     UserSerializer, 
     PasswordSerializer,
@@ -26,7 +19,7 @@ from users.serializers import (
 )
 from users.permissions.api import IsOwner
 from users.models import Action, Follower, Block
-from users.utils import Recommender, send_token_email, set_blocked
+from users.utils import Recommender, set_blocked
 
 from mainsite.models import Comment, PostMedia, Story
 from mainsite.serializers import (
@@ -54,33 +47,19 @@ class UserViewSet(ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return (
-                User.objects.exclude(id__in=self.request.session['blocked']).
-                annotate(
-                    followers_count=Count('user_to', distinct=True),
-                    following_count=Count('user_from', distinct=True)
-                )
+            return User.objects.exclude(id__in=self.request.session['blocked']).annotate(
+                followers_count=Count('user_to', distinct=True),
+                following_count=Count('user_from', distinct=True)
             )
         return User.objects.annotate(
             followers_count=Count('user_to', distinct=True), 
             following_count=Count('user_from', distinct=True)
-        )
+        ).all()
     
     def get_serializer_class(self):
         if self.action in ['list', 'create']:
             return UserCreateSerializer
         return UserSerializer
-    
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(
-            page, 
-            many=True, 
-            fields=['is_online', 'gender', 'bio', 'last_login']
-        )
-        return self.get_paginated_response(serializer.data)
 
     @action(detail=True, methods=['patch'], url_path='pswd')
     def change_pswd(self, request, slug=None):
@@ -95,10 +74,10 @@ class UserViewSet(ModelViewSet):
     @action(detail=True)
     def actions(self, request, slug=None):
         user = self.get_object()
-        actions = (
-            Action.objects.select_related('owner', 'content_type').
-            filter(Q(post__owner=user) | Q(user=user))
-        )
+        actions = Action.objects.filter(
+            Q(post__owner=user) |
+            Q(user=user)
+        ).select_related('owner', 'content_type')
         serializer = ActionSerializer(actions, many=True)
         return Response(serializer.data)
 
@@ -109,10 +88,7 @@ class UserViewSet(ModelViewSet):
     )
     def get_action(self, request, action_id, slug=None):
         user = self.get_object()
-        exist = Action.objects.filter(
-            Q(post__owner=user) | Q(user=user), 
-            id=action_id
-        )
+        exist = Action.objects.filter(Q(post__owner=user) | Q(user=user), id=action_id)
         if not exist:
             return Response({'status': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         if request.method == 'GET':
@@ -130,9 +106,9 @@ class UserViewSet(ModelViewSet):
     @action(detail=True)
     def stories(self, request, slug=None):
         story = (
-            Story.objects.select_related('owner').
-            filter(owner=self.get_object()).
-            exclude(owner__in=request.session['blocked'])
+            Story.objects.filter(owner=self.get_object()).
+            exclude(owner__in=request.session['blocked']).
+            select_related('owner')
         )
         serializer = StorySerializer(story, many=True)
         return Response(serializer.data)
@@ -297,31 +273,3 @@ class UserViewSet(ModelViewSet):
         response_data['posts'] = serializer.data
         response_data['comments'] = comments_serializer.data
         return Response(response_data)
-    
-
-class PasswordResetAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = PasswordResetSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            user = User.objects.get(email=serializer.validated_data['email'])
-        except User.DoesNotExist:
-            return Response({'status': 'Not found'}, status.HTTP_404_NOT_FOUND)
-        else:
-            token = default_token_generator.make_token(user)
-            send_token_email(user, token)
-            return Response({'status': 'Check email'}, status.HTTP_200_OK)
-
-
-class PasswordResetConfirmAPIView(APIView):
-    def post(self, request, uidb64, token):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = force_str(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(username=user)
-        valid = default_token_generator.check_token(user, token)
-        if not valid:
-            return Response({'status': 'Invalid token'}, status.HTTP_400_BAD_REQUEST)
-        user.set_password(serializer.validated_data['new_password'])
-        user.save()
-        return Response({'status': 'Changed'}, status.HTTP_200_OK)

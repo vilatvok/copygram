@@ -110,9 +110,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'users.context_processors.unread_actions',
-                'users.context_processors.unread_room_messages',
-                'users.context_processors.unread_chat_messages',
+                'users.context_processors.unread_messages'
             ],
         },
     },

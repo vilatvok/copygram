@@ -29,21 +29,19 @@ def get_posts(user=None, blocked=None):
     subquery = PostMedia.objects.filter(post=OuterRef('pk')).values('file')[:1]
     if blocked is not None:
         queryset = (
-            Post.objects.select_related('owner').prefetch_related('tags').
-            exclude(owner__in=blocked).
+            Post.objects.exclude(owner__in=blocked).
             annotate(file=Concat(
                 Value(settings.MEDIA_URL), 
                 Subquery(subquery, output_field=CharField())
-            ))
+            )).select_related('owner').prefetch_related('tags')
         )
     else:
         queryset = (
-            Post.objects.select_related('owner').prefetch_related('tags').
-            filter(owner=user).
+            Post.objects.filter(owner=user).
             annotate(file=Concat(
                 Value(settings.MEDIA_URL), 
                 Subquery(subquery, output_field=CharField())
-            ))
+            )).select_related('owner').prefetch_related('tags')
         )
     return queryset
 

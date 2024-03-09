@@ -28,15 +28,13 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'bio',
             'gender',
             'avatar',
-            'is_online',
             'private_account',
             'followers_count',
             'following_count',
         ]
         extra_kwargs = {
             'private_account': {'write_only': True},
-            'last_login': {'read_only': True},
-            'is_online': {'read_only': True}
+            'last_login': {'read_only': True}
         }
 
     def __init__(self, instance=None, data=empty, **kwargs):
@@ -69,18 +67,7 @@ class PasswordSerializer(serializers.Serializer):
     def validate_password(self, value):
         password_validation.validate_password(value)
         return value
-
-class PasswordResetSerializer(serializers.Serializer):
-    email = serializers.EmailField(write_only=True)
-
-
-class PasswordResetConfirmSerializer(serializers.Serializer):
-    new_password = serializers.CharField(write_only=True)
-
-    def validate(self, data):
-        password_validation.validate_password(data['new_password'])
-        return data
-
+    
 
 class ActionSerializer(serializers.ModelSerializer):
     owner = serializers.StringRelatedField(source='owner.username')

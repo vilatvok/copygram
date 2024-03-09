@@ -15,7 +15,6 @@ class User(AbstractUser):
     slug = models.SlugField(unique=True, max_length=255)
     avatar = models.ImageField(upload_to='users/', blank=True, null=True)
     email = models.EmailField()
-    is_online = models.BooleanField(default='False')
     last_activity = models.DateTimeField(blank=True, null=True)
     user_action = GenericRelation('Action', related_query_name='user')
     bio = models.TextField(blank=True)
@@ -38,7 +37,7 @@ class Action(models.Model):
     Contains a generic foreign key to pair with each model.
     """
     owner = models.ForeignKey(
-        'User', related_name='actions', on_delete=models.CASCADE
+        'User', related_name='action', on_delete=models.CASCADE
     )
     date = models.DateTimeField(auto_now_add=True)
     act = models.CharField(max_length=255)
@@ -52,6 +51,10 @@ class Action(models.Model):
     )
     object_id = models.PositiveIntegerField(null=True, blank=True)
     target = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        indexes = [models.Index(fields=['act'])]
+        ordering = ['-date']
 
     def __str__(self):
         return f'{self.owner} {self.act}'

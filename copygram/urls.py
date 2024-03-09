@@ -25,7 +25,7 @@ from two_factor.urls import urlpatterns as tf_urls
 
 from copygram.yasg import urlpatterns as doc
 from mainsite.views.api import PostViewSet, StoryViewSet, TagViewSet
-from users.views.api import UserViewSet, PasswordResetAPIView, PasswordResetConfirmAPIView
+from users.views.api import UserViewSet
 from chat.views.api import RoomChatViewSet, PrivateChatViewSet
 
 
@@ -52,8 +52,6 @@ urlpatterns = [
     path('auth/', include('rest_framework.urls')),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/password-reset/', PasswordResetAPIView.as_view()),
-    path('api/password-reset-confirm/<uidb64>/<token>/', PasswordResetConfirmAPIView.as_view()),
 ]
 
 urlpatterns += doc

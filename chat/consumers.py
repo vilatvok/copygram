@@ -1,9 +1,7 @@
-import base64
 import json
-import redis
 
+from django.core.files.storage import default_storage
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -19,7 +17,6 @@ from chat.models import Message, PrivateChat, RoomChat, MessageImages
 
 
 User = get_user_model()
-r = redis.Redis(host='redis', port=6379, db=0)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -80,7 +77,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         elif action == 'send_message':
             url = data['url']
             message = data['message']
-            files = data.get('files', None)
+            files = data['files']
 
             avatar = self.user.avatar.url if self.user.avatar else '/static/images/user.png'
 
@@ -108,37 +105,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
     @database_sync_to_async
     def save_message(self, url, chat_id, user, message, files):
+        print(files)
         user = User.objects.get(username=user)
         if url == 'room':
             chat = RoomChat.objects.get(id=chat_id)
-            users = chat.users.exclude(username=user.username)
         else:
             chat = PrivateChat.objects.get(id=chat_id)
-            users = chat.first_user if user == chat.first_user.username else chat.second_user
-
         if len(message):
-            message_obj = Message.objects.create(
-                user=user, 
-                chat=chat,
-                content=message
-            )
+            message_obj = Message.objects.create(user=user, chat=chat, content=message)
         else:
             message_obj = Message.objects.create(user=user, chat=chat)
-        
-        # decode image and save it
-        files_list = []
-        if files:
-            for file, name in files:
-                form, imgstr = file.split(';base64,') 
-                data = ContentFile(base64.b64decode(imgstr), name=name)
-                files_list.append(MessageImages(message=message_obj, file=data))
-            MessageImages.objects.bulk_create(files_list)
-
-        if message_obj.chat.__class__ == RoomChat:
-            for __user in users:
-                r.sadd(f'user:{__user.username}:room_unread', message_obj.id)
-        else:
-            r.sadd(f'user:{users.username}:chat_unread', message_obj.id)
+        for file in files:
+            MessageImages.objects.create(message=message_obj, file=file)
+            # default_storage.save(file, file)
 
     @database_sync_to_async
     def clear_messages(self, url, chat_id):

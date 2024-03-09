@@ -19,13 +19,12 @@ class LoginRequiredMiddleware:
         allowed_domen = (
             any([
                 request.path.startswith('/api'), 
-                request.path.startswith('/social'),
-                request.path.startswith('/users/password'),
+                request.path.startswith('/social'), 
                 request.path.startswith(settings.MEDIA_URL)
             ])
         )
         if (not request.user.is_authenticated
-            and not allowed_domen
-            and request.path not in allowed):
+            and request.path not in allowed
+            and not allowed_domen):
             return redirect(settings.LOGIN_URL)
         return self.get_response(request)

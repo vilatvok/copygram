@@ -1,9 +1,6 @@
 import redis
 
 from django.contrib.auth import get_user_model
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
-from django.core.mail import send_mail
 
 from users.models import Follower
 
@@ -17,17 +14,6 @@ def set_blocked(user, request):
     block_to = user.block_to.all().values_list('block_from', flat=True)
     request.session['blocked'] = list(block_from) + list(block_to)
 
-
-def send_token_email(user, token):
-    uid = urlsafe_base64_encode(force_bytes(user))
-    send_mail(
-        'Password reset',
-        'Click here to reset your password:' +
-        f'http://127.0.0.1:8000/api/password-reset-confirm/{uid}/{token}/',
-        'kvydyk@gmail.com',
-        [user.email]    
-    )
-    
 
 class Recommender:
     """
