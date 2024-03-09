@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Followers{% endblock title %}
+
+{% block content %}
+   {% for user in users %}
+      <div class="row d-flex align-items-center h-100 mb-2">
+         <div class="col col-md-9 col-lg-7 col-xl-5">
+            <div class="card bg-dark" style="border-radius: 15px;">
+               <div class="card-body p-4">
+                  <div class="d-flex text-black">
+                     <div class="flex-shrink-0">
+                        <a href="{% url 'users:profile' user.slug %}">
+                           {% if user.avatar %}
+                              <img src="{{ user.avatar.url }}"
+                                 alt="Generic placeholder image" class="img-fluid"
+                                 style="width: 100px; border-radius: 20px;">
+                           {% else %}
+                              <img src="{% static 'images/user.png' %}"
+                                 alt="Generic placeholder image" class="img-fluid"
+                                 style="width: 100px; border-radius: 20px;">
+                           {% endif %}
+                        </a>
+                     </div>
+                     <div class="flex-grow-1 ms-3">
+                        <h5 class="mb-1 text-light">{{ user.username }}
+                           <span id="status-{{ user.slug }}" class="badge rounded-pill bg-success">
+                              {% if user.is_online %}
+                                 Online
+                              {% else %}
+                                 Offline
+                              {% endif %}
+                           </span>
+                        </h5>
+                        <p class="mb-2 pb-1 text-light">{{ user.first_name }} {{ user.last_name }}</p>
+                        <p class="mb-2 pb-1 text-light"><span id="{{ user.slug }}">{{ user.followers_count }}</span> followers</p>
+                        <div class="d-flex pt-1">
+                           {% if user != request.user %}
+                              <button id="follow-{{ user.slug }}" type="button" class="btn btn-success me-1 flex-grow-1">
+                                 {% if user.is_followed %}
+                                    Unfollow
+                                 {% else %}
+                                    Follow
+                                 {% endif %}
+                              </button>
+                           {% endif %}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   {% empty %}
+      <div class="alert alert-info" role="alert">
+         {% block empty_message %}
+            {% if current_user == request.user %}
+               You don't have followers.
+            {% else %}
+               {{ current_user.username }} doesn't have followers.
+            {% endif %}
+         {% endblock empty_message %}
+      </div>
+   {% endfor %}
+{% endblock content %}
+
+{% block jscontent %}
+   <script src="//cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+   <script>
+      const url = "{% url 'users:follow' 0 %}"
+   </script>
+   <script src="{% static 'js/followers.js' %}"></script>
+{% endblock jscontent %}

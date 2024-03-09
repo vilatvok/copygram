@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Actions{% endblock title %}
+
+{% block content %}
+   {% if actions %}
+      {% for action in actions %}
+         <div class="card w-75 mb-2">
+            <div class="card-body bg-dark rounded">
+               <h5 class="card-title text-light">{{ action.owner }}</h5>
+               <p class="card-text text-light">{{ action.act }}</p>
+               {% if action.file %}
+                  <img src="{{ action.file.url }}"
+                     alt="Generic placeholder image" class="img-fluid"
+                     style="width: 100px; border-radius: 10px;">
+               {% endif %}
+               <p class="card-text"><small class="text-muted">{{ action.created }}</small></p>
+               <button id="action-{{ action.id }}" class="btn btn-success delete-action">Delete</button>
+            </div>
+         </div>
+      {% endfor %}
+   {% else %}
+      <div class="alert alert-info" role="alert">
+         You don't have any actions.
+      </div>
+   {% endif %}
+{% endblock content %}
+
+{% block jscontent %}
+   <script src="//cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+   <script>
+      const url = "{% url 'users:delete_action' 0 %}"
+   </script>
+   <script src="{% static 'js/actions.js' %}"></script>
+{% endblock jscontent %}

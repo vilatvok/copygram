@@ -1,0 +1,14 @@
+{% extends "chat/base_chat.html" %}
+{% load static %}
+
+{% block jscontent %}  
+    <script>
+        const owner = '{{ chat.owner.username }}'
+        {% if request.user.avatar %}
+            const avatar = '{{ request.user.avatar.url }}'
+        {% else %}
+            const avatar = "{% static 'images/user.png' %}"
+        {% endif %}
+    </script>
+    <script src="{% static 'js/chat.js' %}"></script>
+{% endblock jscontent %}

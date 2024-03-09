@@ -1,0 +1,16 @@
+{% extends "default_form.html" %}
+{% load bootstrap5 %}
+
+{% block title %}Edit{% endblock title %}
+
+{% block text_form %}
+   <button class="btn btn-success">Save</button>
+   {% if perms.users.social_auth %}
+      <a class="btn btn-success" href="{% url 'users:change_password' %}">Change password</a>
+   {% endif %}
+   {% if is_enable %}
+      <a class="btn btn-success" href="{% url 'users:disable_fa' %}">Disable 2fa</a>
+   {% else %}
+      <a class="btn btn-success" href="{% url 'users:enable_fa' %}">Enable 2fa</a>
+   {% endif %}   
+{% endblock text_form %}

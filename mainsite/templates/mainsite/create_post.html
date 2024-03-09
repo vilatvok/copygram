@@ -1,0 +1,9 @@
+{% extends "default_form.html" %}
+{% load bootstrap5 %}
+
+{% block title %}Create post{% endblock title %}
+
+{% block text_form %}
+   <input type="file" name="files" multiple />
+   <button class="btn btn-success">Create</button>
+{% endblock text_form %}

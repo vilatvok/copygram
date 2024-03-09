@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chats{% endblock title %}
+
+{% block content %}
+    {% for chat in chats %}
+        <div class="card w-75 mb-3">
+            <div class="card-body">
+                {% if request.user == chat.second_user %}
+                    <h5 class="card-title">{{ chat.first_user.username }}</h5>
+                {% else %}
+                    <h5 class="card-title">{{ chat.second_user.username }}</h5>
+                {% endif %}
+                {% if chat.last_message %}
+                    <p class="card-text">
+                        {% if chat.last_message_user %}
+                            <b>{{ chat.last_message_user }}</b>: {{ chat.last_message }}</p>
+                        {% else %}
+                            <b>Me</b>: {{ chat.last_message }}</p>
+                        {% endif %}
+                {% endif %}
+                <a href="{% url 'chat:private_chat' chat.id %}" class="btn btn-success">Send message</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="alert alert-info" role="alert">
+            There is no any post.
+        </div>
+    {% endfor %}
+{% endblock content %}

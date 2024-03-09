@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% load static %}
+{% load bootstrap5 %}
+
+{% block title %}Profile{% endblock title %}
+
+{% block content %}
+   <div class="row d-flex align-items-center h-100">
+      <div class="col col-md-9 col-lg-7 col-xl-5">
+         <div class="card bg-dark" style="border-radius: 15px;">
+            <div class="card-body p-4">
+               <div class="d-flex text-black">
+                  <div class="flex-shrink-0">
+                     {% if user.avatar %}
+                        <img src="{{ user.avatar.url }}"
+                           alt="Generic placeholder image" class="img-fluid"
+                           style="width: 100px; border-radius: 20px;">
+                     {% else %}
+                        <img src="{% static 'images/user.png' %}"
+                           alt="Generic placeholder image" class="img-fluid"
+                           style="width: 100px; border-radius: 20px;">
+                     {% endif %}
+                  </div>
+                  <div class="flex-grow-1 ms-3">
+                     <h5 class="mb-1 text-light">{{ user.username }}
+                        <span class="badge rounded-pill bg-success">
+                           {% if user.is_online %}
+                              Online
+                           {% else %}
+                              Offline
+                           {% endif %}
+                        </span>
+                     </h5>
+                     <p class="mb-2 pb-1 text-light">{{ user.first_name }} {{ user.last_name }}</p>
+                     <p class="mb-2 pb-1 text-muted">{{ user.bio }}</p>
+                     <div class="d-flex pt-1">
+                        {% if not is_followed and user.private_account and user != request.user %}
+                           <p class="mb-2 pb-1 text-light me-2">
+                              <a href="#"><span id="followers">{{ followers }} </span>
+                                 followers</a>
+                           </p>
+                           <p class="mb-2 pb-1 text-light">
+                              <a href="#">{{ following }} following</a>
+                           </p>
+                        {% else %}
+                           <p class="mb-2 pb-1 text-light me-2">
+                              <a href="{% url 'users:followers' user.slug %}"><span id="followers">{{ followers }} </span>
+                                 followers</a>
+                           </p>
+                           <p class="mb-2 pb-1 text-light">
+                              <a href="{% url 'users:following' user.slug %}">{{ following }} following</a>
+                           </p>
+                        {% endif %}
+                     </div>
+                     <div class="d-flex pt-1">
+                        {% if user == request.user %}
+                           <a class="btn btn-success me-1 flex-grow-1" 
+                              href="{% url 'users:edit_profile' user.slug %}" 
+                              role="button">Edit</a>
+                           <a class="btn btn-success me-1 flex-grow-1" 
+                              href="{% url 'mainsite:create' %}" 
+                              role="button">Add post</a>
+                           <a class="btn btn-success flex-grow-1" 
+                              href="{% url 'mainsite:create_story' %}" 
+                              role="button">Add story</a>
+                        {% else %}
+                           <button id="follow" type="button" class="btn btn-success me-1 flex-grow-1">
+                              {% if is_followed %}
+                                 Unfollow
+                              {% else %}
+                                 Follow
+                              {% endif %}
+                           </button>
+                           <form action="{% url 'users:block' user.slug %}" method="post">
+                              {% csrf_token %}
+                              <button class="btn btn-success flex-grow-1">Block</button>
+                           </form>
+                           {% if is_chat %}
+                              <a class="btn btn-success" href="{% url 'chat:private_chat' is_chat.id %}" role="button">Message</a>
+                           {% else %}
+                              <form action="{% url 'chat:create_chat' user.slug %}" method="post">
+                                 {% csrf_token %}
+                                 <button class="btn btn-success flex-grow-1">Message</button>
+                              </form>
+                           {% endif %}
+                        {% endif %}
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+   {% if not is_followed and user.private_account and user != request.user %}
+      <p class="display-5">Private account:</p> 
+   {% else %}
+      <div class="row row-cols-1 row-cols-md-5 g-4 mt-2">
+         {% for post in posts %}
+            <div class="col">
+               <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
+                  <a href="{{ post.get_absolute_url }}">
+                     {% if post.file|slice:"-4:" == ".mp4" %}
+                        <video height="225">
+                           <source src="{{ post.file }}" type="video/mp4">
+                        </video>
+                     {% else %}
+                        <img class="card-img-top" src="{{ post.file }}" alt="Card image cap" height="225">
+                     {% endif %}
+                  </a>
+                  <div class="card-body bg-dark">
+                  </div>
+               </div>
+            </div>
+         {% endfor %}
+      </div>
+      {% if stories %}
+         <p class="display-5">Stories:</p>
+         <div class="row row-cols-1 row-cols-md-5 g-4">
+            {% for story in stories %}
+               <div class="col">
+                  <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
+                     <div class="card-body bg-dark">
+                        <form action="{% url 'users:delete_story' request.user story.id %}" method="post">
+                           {% csrf_token %}
+                           <button class="btn btn-success">Delete</button>
+                        </form>
+                     </div>
+                     <img class="card-img-top" src="{{ story.img.url }}" alt="Card image cap" height="225">
+                  </div>
+               </div>
+            {% endfor %}
+         </div>
+      {% endif %}
+   {% endif %}
+   {% if user == request.user %}
+      <p class="pt-3">
+         <button class="btn btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWidthExample" aria-expanded="false" aria-controls="collapseWidthExample">
+           Recommendations
+         </button>
+      </p>
+      {% if suggestions %}
+         {% for s in suggestions %}
+            <div style="min-height: 120px;">
+               <div class="collapse collapse-horizontal" id="collapseWidthExample">
+                  <div class="card card-body bg-dark" style="width: 300px;">
+                     {% if s.avatar %}
+                        <img src="{{ s.avatar.url }}"
+                           alt="Generic placeholder image" class="img-fluid"
+                           style="width: 100px; border-radius: 10px;">
+                     {% else %}
+                        <img src="{% static 'images/user.png' %}"
+                           alt="Generic placeholder image" class="img-fluid"
+                           style="width: 100px; border-radius: 20px;">
+                     {% endif %}
+                     <a href="{% url 'users:profile' s.slug %}">{{ s.username }}</a>
+                     <div class="d-flex pt-1">
+                        <button id="follow-{{ s.slug }}" type="button" class="btn btn-success me-1 flex-grow-1 follow-recomendation">
+                           Follow
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         {% endfor %}
+      {% endif %}
+   {% endif %}
+{% endblock content %}
+
+{% block jscontent %}
+   <script src="//cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+   <script>
+      const url = "{% url 'users:follow' user.slug %}"
+      const user_ = '{{ user.username }}'
+      const users_slug = '{{ user.slug }}'
+      const curr_user = '{{ request.user }}'
+   </script>
+   {% if user == request.user %}
+      <script src="{% static 'js/recommend.js' %}"></script>
+   {% else %}
+      <script src="{% static 'js/profile.js' %}"></script>
+   {% endif %}
+{% endblock jscontent %}

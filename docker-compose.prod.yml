@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: copygram
+    image: web
+    restart: always
+    command: uwsgi --ini /app/config/uwsgi/uwsgi.ini
+    env_file:
+      - prod.env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16
+    container_name: db
+    restart: always
+    volumes:
+      - data:/var/lib/postgresql/data/
+    env_file:
+      - prod.env
+
+  redis:
+    image: redis:7.0
+    container_name: redis
+
+  celery_worker:
+    build: .
+    container_name: worker
+    image: celery_worker
+    command: celery -A copygram worker -l info
+    volumes: 
+      - .:/app
+    env_file:
+      - prod.env
+    depends_on:
+      - web
+      - redis
+  
+  celery_beat:
+    build: .
+    container_name: scheduler
+    image: celery_beat
+    command: ["celery", "-A", "copygram", 
+              "beat", "-l", "info"]
+    volumes:
+      - .:/app
+    env_file:
+      - prod.env
+    depends_on:
+      - celery_worker
+
+  nginx:
+    image: nginx:1.25
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./config/nginx:/etc/nginx/templates
+      - .:/app
+    ports:
+      - "8080:80"
+      - "443:443"
+
+  daphne:
+    build: .
+    working_dir: /app/
+    image: daphne
+    container_name: websocket
+    command: ["daphne", "-u", "/app/daphne.sock",
+              "copygram.asgi:application"]
+    restart: always
+    volumes:
+      - .:/app
+    env_file:
+      - prod.env
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  data:

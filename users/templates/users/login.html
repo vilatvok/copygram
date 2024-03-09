@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load bootstrap5 %}
+{% load two_factor_tags %}
+
+{% block content %}
+   {% if wizard.steps.current == 'token' %}
+      <p>{{ device|as_verbose_action }}</p>
+   {% endif %}
+   <form action="" method="post">
+      {% csrf_token %}
+      {{ wizard.management_form }}
+      {% bootstrap_form wizard.form %}
+      {# hidden submit button to enable [enter] key #}
+      <input type="submit" value="" hidden />
+      {% if other_devices %}
+         <p>{% trans "Or, alternatively, use one of your other authentication methods:" %}</p>
+         <p>
+            {% for other in other_devices %}
+               <button name="challenge_device" value="{{ other.persistent_id }}"
+                  class="btn btn-secondary btn-block" type="submit">
+               {{ other|as_action }}
+               </button>
+            {% endfor %}
+         </p>
+      {% endif %}
+      <button type="submit" class="btn btn-success">{% trans "Login" %}</button>
+      <a class="btn btn-success" href="{% url 'social:begin' 'facebook' %}">Facebook</a>
+      <a class="btn btn-success" href="{% url 'users:password_reset' %}">Forgot password?</a>
+   </form>
+{% endblock %}
+

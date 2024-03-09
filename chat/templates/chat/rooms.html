@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Rooms{% endblock title %}
+
+{% block content %}
+    <a href="{% url 'chat:create_room' %}" class="btn btn-success">Create room</a>
+    {% for room in rooms %}
+        <div class="card text-center mt-2">
+            <div class="card-body">
+                <h5 class="card-title">{{ room.name }}</h5>
+                <form method="post" action="{% url 'chat:delete_room' room.id %}">
+                    {% csrf_token %}
+                    <a href="{% url 'chat:room_chat' room.id %}" class="btn btn-success">Enter in the room</a>
+                    <button class="btn btn-success">Delete</button>
+                </form>
+            </div>
+            <div class="card-footer text-body-secondary">
+                {{ room.messages.last.timestamp }}
+            </div>
+        </div>
+    {% endfor %}
+{% endblock content %}

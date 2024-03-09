@@ -1,0 +1,10 @@
+{% extends "chat/base_chat.html" %}
+{% load static %}
+
+{% block jscontent %}
+    <script>
+        const request_id = '{{ request.sessions.session_key }}'
+        let count_members = '{{ members.count }}'
+    </script>
+    <script src="{% static 'js/chat_api.js' %}"></script>
+{% endblock jscontent %}

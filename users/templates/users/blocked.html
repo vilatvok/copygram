@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Blocked{% endblock title %}
+
+{% block content %}
+   {% for user in users %}
+      <div class="row d-flex align-items-center h-100 mb-2">
+         <div class="col col-md-9 col-lg-7 col-xl-5">
+            <div class="card bg-dark" style="border-radius: 15px;">
+               <div class="card-body p-4">
+                  <div class="d-flex text-black">
+                     <div class="flex-shrink-0">
+                        <a href={% url 'users:profile' user.slug %}>
+                           {% if user.avatar %}
+                              <img src="{{ user.avatar.url }}"
+                                 alt="Generic placeholder image" class="img-fluid"
+                                 style="width: 100px; border-radius: 10px;">
+                           {% else %}
+                              <img src="{% static 'images/user.png' %}"
+                                 alt="Generic placeholder image" class="img-fluid"
+                                 style="width: 100px; border-radius: 10px;">
+                           {% endif %}
+                        </a>
+                     </div>
+                     <div class="flex-grow-1 ms-3">
+                        <h5 class="mb-1 text-light">{{ user.username }}</h5>
+                        <p class="mb-2 pb-1 text-light">{{ user.first_name }} {{ user.last_name }}</p>
+                        <form action="{% url 'users:block' user.slug %}" method="post">
+                           {% csrf_token %}
+                           <div class="d-flex pt-1">
+                              <button class="btn btn-success flex-grow-1">Unblock</button>
+                           </div>
+                        </form>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   {% empty %}
+      <div class="alert alert-info" role="alert">
+         There are not any blocked users.
+      </div>
+   {% endfor %}
+{% endblock content %}
