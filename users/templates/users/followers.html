@@ -17,7 +17,7 @@
                                  alt="Generic placeholder image" class="img-fluid"
                                  style="width: 100px; border-radius: 20px;">
                            {% else %}
-                              <img src="{% static 'images/user.png' %}"
+                              <img src="{% static 'users/img/user.png' %}"
                                  alt="Generic placeholder image" class="img-fluid"
                                  style="width: 100px; border-radius: 20px;">
                            {% endif %}
@@ -38,7 +38,9 @@
                         <div class="d-flex pt-1">
                            {% if user != request.user %}
                               <button id="follow-{{ user.slug }}" type="button" class="btn btn-success me-1 flex-grow-1">
-                                 {% if user.is_followed %}
+                                 {% if user.id in user_requests %}
+                                    Cancel
+                                 {% elif user.is_followed %}
                                     Unfollow
                                  {% else %}
                                     Follow
@@ -70,5 +72,5 @@
    <script>
       const url = "{% url 'users:follow' 0 %}"
    </script>
-   <script src="{% static 'js/followers.js' %}"></script>
+   <script src="{% static 'users/js/followers.js' %}"></script>
 {% endblock jscontent %}

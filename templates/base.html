@@ -15,7 +15,7 @@
    <body>
       <nav class="navbar navbar-dark bg-dark navbar-expand-lg navbar-light bg-light">
          <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'mainsite:posts' %}">COPYGRAM</a>
+            <a class="navbar-brand" href="{% url 'blogs:posts' %}">COPYGRAM</a>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                <ul class="navbar-nav mr-auto">
                   {% if user.is_authenticated %}
@@ -31,36 +31,48 @@
                                  <a class="dropdown-item" href="{% url 'users:logout_user' %}">Logout</a>
                               </li>
                               <li>
-                                 <a class="dropdown-item" href="{% url 'users:blocked' user.slug %}">Blocked</a>
+                                 <a class="dropdown-item" href="{% url 'users:blocked' %}">Blocked</a>
                               </li>
                               <li>
-                                 <a class="dropdown-item" href="{% url 'users:activity' user.slug %}">Activity</a>
+                                 <a class="dropdown-item" href="{% url 'users:activity' %}">Activity</a>
+                              </li>
+                              <li>
+                                 <a class="dropdown-item" href="{% url 'users:saved_posts' %}">Saved</a>
+                              </li>
+                              <li>
+                                 <a class="dropdown-item" href="{% url 'users:settings' %}">Settings</a>
                               </li>
                            </ul>
                         {% endwith %}
                      </li>
                      <li class="nav-item">
                         <a class="nav-link" href="{% url 'users:actions' %}">Actions
-                           {% if unread_actions %}<span id="unread-messages">{{ unread_actions }}</span>{% endif %}
+                           {% if unread_actions %}
+                              <span id="unread-messages">{{ unread_actions }}</span>
+                           {% endif %}
                         </a>
                      </li>
                      <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chat:chats' %}">Chats
-                           {% if unread_chat_messages %}<span id="unread-messages">{{ unread_chat_messages }}</span>{% endif %}
+                        <a class="nav-link" href="{% url 'chats:chats' %}">Chats
+                           {% if unread_chat_messages %}
+                              <span id="unread-messages">{{ unread_chat_messages }}</span>
+                           {% endif %}
                         </a>
                      </li>
                      <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chat:rooms' %}">Rooms
-                           {% if unread_room_messages %}<span id="unread-messages">{{ unread_room_messages }}</span>{% endif %}
+                        <a class="nav-link" href="{% url 'chats:rooms' %}">Rooms
+                           {% if unread_room_messages %}
+                              <span id="unread-messages">{{ unread_room_messages }}</span>
+                           {% endif %}
                         </a>
                      </li>
                   {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'users:login_user' %}">Login</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'users:register' %}">Register</a>
-                    </li>
+                     <li class="nav-item">
+                           <a class="nav-link" href="{% url 'users:login_user' %}">Login</a>
+                     </li>
+                     <li class="nav-item">
+                           <a class="nav-link" href="{% url 'users:register' %}">Register</a>
+                     </li>
                   {% endif %}
                </ul>
             </div>

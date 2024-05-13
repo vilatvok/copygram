@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 import socket
+
 from datetime import timedelta
 from pathlib import Path
 
@@ -42,9 +43,9 @@ INTERNAL_IPS = [ip[:-1] + '1' for ip in ips] + ['0.0.0.0']
 
 INSTALLED_APPS = [
     'daphne',
-    'mainsite',
+    'blogs',
     'users',
-    'chat',
+    'chats',
 
     'bootstrap5',
     'taggit',
@@ -59,7 +60,9 @@ INSTALLED_APPS = [
     'two_factor',
     'django_celery_beat',
     'django_filters',
-    
+    'django_extensions',
+    'django_rename_app',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -204,6 +207,8 @@ SOCIAL_AUTH_JSONFIELD_ENABLED = True
 SOCIAL_AUTH_FACEBOOK_KEY = os.environ.get('SOCIAL_AUTH_FACEBOOK_KEY')
 SOCIAL_AUTH_FACEBOOK_SECRET = os.environ.get('SOCIAL_AUTH_FACEBOOK_SECRET')
 
+SHELL_PLUS = 'ipython'
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -230,7 +235,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = 'users:login_user'
-LOGIN_REDIRECT_URL = 'mainsite:posts'
+LOGIN_REDIRECT_URL = 'blogs:posts'
 LOGOUT_REDIRECT_URL = 'users:login_user'
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True

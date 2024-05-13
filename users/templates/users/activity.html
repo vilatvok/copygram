@@ -6,33 +6,38 @@
 
 {% block content %}
    <p class="display-5">Liked posts:</p>
-   <div class="row row-cols-1 row-cols-md-5 g-4">
-      {% for post in data.posts %}
-         <div class="col">
-            <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
-               <a href="{{ post.get_absolute_url }}">
-                  {% if post.file|slice:"-4:" == ".mp4" %}
-                     <video height="225">
-                        <source src="{{ post.file }}" type="video/mp4">
-                     </video>
-                  {% else %}
-                     <img class="card-img-top" src="{{ post.file }}" alt="Card image cap" height="225">
-                  {% endif %}
-               </a>
-               <div class="card-body bg-dark">
+   {% if data.posts %}
+      <div class="row row-cols-1 row-cols-md-5 g-4">
+         {% for post in data.posts %}
+            <div class="col">
+               <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
+                  <a href="{{ post.get_absolute_url }}">
+                     {% if post.file|slice:"-4:" == ".mp4" %}
+                        <video height="225">
+                           <source src="{{ post.file }}" type="video/mp4">
+                        </video>
+                     {% else %}
+                        <img class="card-img-top" src="{{ post.file }}" alt="Card image cap" height="225">
+                     {% endif %}
+                  </a>
+                  <div class="card-body bg-dark">
+                  </div>
                </div>
             </div>
-         </div>
-      {% empty %}
-         <div class="alert alert-info" role="alert">
-            There is no any post.
-         </div>
-      {% endfor %}
-   </div>
+         {% endfor %}
+      </div>
+   {% else %}
+      <div class="alert alert-info" role="alert">
+         There is no any post.
+      </div>
+   {% endif %}
    <p class="display-5">Commented posts:</p>
    <div class="list-group d-inline-flex p-2">
       {% for comment in data.comments %}
-         <a href="{% url 'mainsite:post' comment.post.id %}" class="list-group-item list-group-item-action bg-dark text-light">{{ comment.text }}</a>
+         <a href="{% url 'blogs:post' comment.post.id %}" 
+            class="list-group-item list-group-item-action bg-dark text-light">
+            {{ comment.text }}
+         </a>
       {% endfor %}
    </div>
 {% endblock content %}

@@ -16,36 +16,50 @@
                            alt="Generic placeholder image" class="img-fluid"
                            style="width: 100px; border-radius: 20px;">
                      {% else %}
-                        <img src="{% static 'images/user.png' %}"
+                        <img src="{% static 'users/img/user.png' %}"
                            alt="Generic placeholder image" class="img-fluid"
                            style="width: 100px; border-radius: 20px;">
                      {% endif %}
                   </div>
                   <div class="flex-grow-1 ms-3">
                      <h5 class="mb-1 text-light">{{ user.username }}
-                        <span class="badge rounded-pill bg-success">
-                           {% if user.is_online %}
-                              Online
-                           {% else %}
-                              Offline
-                           {% endif %}
-                        </span>
+                        {% if user.privacy.online_status == 'followers' and is_followed %}
+                           <span class="badge rounded-pill bg-success">
+                              {% if user.is_online %}
+                                 Online
+                              {% else %}
+                                 Offline
+                              {% endif %}
+                           </span>
+                        {% elif user.privacy.online_status == 'everyone' %}
+                           <span class="badge rounded-pill bg-success">
+                              {% if user.is_online %}
+                                 Online
+                              {% else %}
+                                 Offline
+                              {% endif %}
+                           </span>
+                        {% endif %}
                      </h5>
                      <p class="mb-2 pb-1 text-light">{{ user.first_name }} {{ user.last_name }}</p>
                      <p class="mb-2 pb-1 text-muted">{{ user.bio }}</p>
                      <div class="d-flex pt-1">
-                        {% if not is_followed and user.private_account and user != request.user %}
+                        {% if not is_followed and user.privacy.private_account and user != request.user %}
                            <p class="mb-2 pb-1 text-light me-2">
-                              <a href="#"><span id="followers">{{ followers }} </span>
-                                 followers</a>
+                              <a href="#">
+                                 <span id="followers">{{ followers }} </span>
+                                 followers
+                              </a>
                            </p>
                            <p class="mb-2 pb-1 text-light">
                               <a href="#">{{ following }} following</a>
                            </p>
                         {% else %}
                            <p class="mb-2 pb-1 text-light me-2">
-                              <a href="{% url 'users:followers' user.slug %}"><span id="followers">{{ followers }} </span>
-                                 followers</a>
+                              <a href="{% url 'users:followers' user.slug %}">
+                                 <span id="followers">{{ followers }} </span>
+                                 followers
+                              </a>
                            </p>
                            <p class="mb-2 pb-1 text-light">
                               <a href="{% url 'users:following' user.slug %}">{{ following }} following</a>
@@ -55,17 +69,23 @@
                      <div class="d-flex pt-1">
                         {% if user == request.user %}
                            <a class="btn btn-success me-1 flex-grow-1" 
-                              href="{% url 'users:edit_profile' user.slug %}" 
+                              href="{% url 'users:edit_profile'%}" 
                               role="button">Edit</a>
                            <a class="btn btn-success me-1 flex-grow-1" 
-                              href="{% url 'mainsite:create' %}" 
+                              href="{% url 'blogs:create_post' %}" 
                               role="button">Add post</a>
                            <a class="btn btn-success flex-grow-1" 
-                              href="{% url 'mainsite:create_story' %}" 
+                              href="{% url 'blogs:create_story' %}" 
                               role="button">Add story</a>
+                           <form action="{% url 'users:delete_account' %}" method="post">
+                              {% csrf_token %}
+                              <button class="btn btn-success">Delete account</button>
+                           </form>
                         {% else %}
                            <button id="follow" type="button" class="btn btn-success me-1 flex-grow-1">
-                              {% if is_followed %}
+                              {% if request_to_follow %}
+                                 Cancel
+                              {% elif is_followed %}
                                  Unfollow
                               {% else %}
                                  Follow
@@ -75,10 +95,18 @@
                               {% csrf_token %}
                               <button class="btn btn-success flex-grow-1">Block</button>
                            </form>
+                           <a class="btn btn-success flex-grow-1" 
+                              href="{% url 'users:create_report' user.slug %}"
+                              role="button">
+                              Report
+                           </a>
                            {% if is_chat %}
-                              <a class="btn btn-success" href="{% url 'chat:private_chat' is_chat.id %}" role="button">Message</a>
+                              <a class="btn btn-success" 
+                                 href="{% url 'chats:private_chat' is_chat.id %}" role="button">
+                                 Message
+                              </a>
                            {% else %}
-                              <form action="{% url 'chat:create_chat' user.slug %}" method="post">
+                              <form action="{% url 'chats:create_chat' user.slug %}" method="post">
                                  {% csrf_token %}
                                  <button class="btn btn-success flex-grow-1">Message</button>
                               </form>
@@ -91,7 +119,7 @@
          </div>
       </div>
    </div>
-   {% if not is_followed and user.private_account and user != request.user %}
+   {% if not is_followed and user.privacy.private_account and user != request.user %}
       <p class="display-5">Private account:</p> 
    {% else %}
       <div class="row row-cols-1 row-cols-md-5 g-4 mt-2">
@@ -120,10 +148,12 @@
                <div class="col">
                   <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
                      <div class="card-body bg-dark">
-                        <form action="{% url 'users:delete_story' request.user story.id %}" method="post">
-                           {% csrf_token %}
-                           <button class="btn btn-success">Delete</button>
-                        </form>
+                        {% if request.user == user %}
+                           <form action="{% url 'users:delete_story' story.id %}" method="post">
+                              {% csrf_token %}
+                              <button class="btn btn-success">Delete</button>
+                           </form>
+                        {% endif %}
                      </div>
                      <img class="card-img-top" src="{{ story.img.url }}" alt="Card image cap" height="225">
                   </div>
@@ -134,8 +164,9 @@
    {% endif %}
    {% if user == request.user %}
       <p class="pt-3">
-         <button class="btn btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWidthExample" aria-expanded="false" aria-controls="collapseWidthExample">
-           Recommendations
+         <button class="btn btn-success" type="button" data-bs-toggle="collapse" 
+            data-bs-target="#collapseWidthExample" aria-expanded="false" aria-controls="collapseWidthExample">
+            Recommendations
          </button>
       </p>
       {% if suggestions %}
@@ -148,13 +179,14 @@
                            alt="Generic placeholder image" class="img-fluid"
                            style="width: 100px; border-radius: 10px;">
                      {% else %}
-                        <img src="{% static 'images/user.png' %}"
+                        <img src="{% static 'users/img/user.png' %}"
                            alt="Generic placeholder image" class="img-fluid"
                            style="width: 100px; border-radius: 20px;">
                      {% endif %}
                      <a href="{% url 'users:profile' s.slug %}">{{ s.username }}</a>
                      <div class="d-flex pt-1">
-                        <button id="follow-{{ s.slug }}" type="button" class="btn btn-success me-1 flex-grow-1 follow-recomendation">
+                        <button id="follow-{{ s.slug }}" type="button" 
+                           class="btn btn-success me-1 flex-grow-1 follow-recomendation">
                            Follow
                         </button>
                      </div>
@@ -175,8 +207,8 @@
       const curr_user = '{{ request.user }}'
    </script>
    {% if user == request.user %}
-      <script src="{% static 'js/recommend.js' %}"></script>
+      <script src="{% static 'users/js/recommend.js' %}"></script>
    {% else %}
-      <script src="{% static 'js/profile.js' %}"></script>
+      <script src="{% static 'users/js/profile.js' %}"></script>
    {% endif %}
 {% endblock jscontent %}

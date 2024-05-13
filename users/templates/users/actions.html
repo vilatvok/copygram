@@ -5,6 +5,10 @@
 
 {% block content %}
    {% if actions %}
+      <form method="post" action="{% url 'users:clear_actions' %}">
+         {% csrf_token %}
+         <button class="btn btn-success mb-2">Clear</button>
+      </form>
       {% for action in actions %}
          <div class="card w-75 mb-2">
             <div class="card-body bg-dark rounded">
@@ -16,7 +20,21 @@
                      style="width: 100px; border-radius: 10px;">
                {% endif %}
                <p class="card-text"><small class="text-muted">{{ action.created }}</small></p>
-               <button id="action-{{ action.id }}" class="btn btn-success delete-action">Delete</button>
+               {% if action.act|slice:":5" == 'wants' %}
+                  <form method="post" 
+                     action="{% url 'users:accept_follower' action.owner.slug %}">
+                     {% csrf_token %}
+                     <button class="btn btn-success mb-2">Accept</button>
+                  </form>
+                  <form method="post" 
+                     action="{% url 'users:reject_follower' action.owner.slug %}">
+                     {% csrf_token %}
+                     <button class="btn btn-success mb-2">Reject</button>
+                  </form>
+               {% else %}
+                  <button id="action-{{ action.id }}" 
+                  class="btn btn-success delete-action">Delete</button>
+               {% endif %}
             </div>
          </div>
       {% endfor %}
@@ -25,6 +43,7 @@
          You don't have any actions.
       </div>
    {% endif %}
+   
 {% endblock content %}
 
 {% block jscontent %}
@@ -32,5 +51,5 @@
    <script>
       const url = "{% url 'users:delete_action' 0 %}"
    </script>
-   <script src="{% static 'js/actions.js' %}"></script>
+   <script src="{% static 'users/js/actions.js' %}"></script>
 {% endblock jscontent %}
