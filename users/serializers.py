@@ -4,14 +4,16 @@ from rest_framework import serializers
 
 from common.utils import CustomSerializer
 
-from blogs.models import Post
 from users.models import Action, Report, UserPrivacy
 
 
 User = get_user_model()
 
 
-class UserSerializer(CustomSerializer, serializers.HyperlinkedModelSerializer):
+class UserUpdateSerializer(
+    CustomSerializer,
+    serializers.HyperlinkedModelSerializer,
+):
     url = serializers.HyperlinkedIdentityField(
         view_name='user-detail',
         lookup_field='slug',
@@ -44,12 +46,26 @@ class UserSerializer(CustomSerializer, serializers.HyperlinkedModelSerializer):
         }
 
 
-class UserCreateSerializer(UserSerializer):
+class UserSerializer(UserUpdateSerializer):
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        current_user = self.context['request'].user
+        user = instance
+        privacy = user.privacy
+        if privacy.online_status == 'followers':
+            if not user.is_followed and current_user != user:
+                representation.pop('is_online')
+        elif privacy.online_status == 'nobody':
+            representation.pop('is_online')
+        return representation
+
+
+class UserCreateSerializer(UserUpdateSerializer):
     class Meta:
         model = User
-        fields = UserSerializer.Meta.fields + ['password']
+        fields = UserUpdateSerializer.Meta.fields + ['password']
         extra_kwargs = {
-            **UserSerializer.Meta.extra_kwargs,
+            **UserUpdateSerializer.Meta.extra_kwargs,
             'password': {'write_only': True}
         }
 
@@ -94,15 +110,6 @@ class ActionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Action
         exclude = ['content_type', 'object_id']
-
-
-class ActivitySerializer(serializers.HyperlinkedModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.username')
-    file = serializers.CharField()
-
-    class Meta:
-        model = Post
-        fields = ['url', 'owner', 'file']
 
 
 class ReportSerializer(serializers.ModelSerializer):

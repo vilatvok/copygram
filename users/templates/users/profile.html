@@ -62,7 +62,8 @@
                               </a>
                            </p>
                            <p class="mb-2 pb-1 text-light">
-                              <a href="{% url 'users:following' user.slug %}">{{ following }} following</a>
+                              <a href="{% url 'users:following' user.slug %}">
+                                 {{ following }} following</a>
                            </p>
                         {% endif %}
                      </div>
@@ -82,7 +83,8 @@
                               <button class="btn btn-success">Delete account</button>
                            </form>
                         {% else %}
-                           <button id="follow" type="button" class="btn btn-success me-1 flex-grow-1">
+                           <button id="follow" type="button" 
+                              class="btn btn-success me-1 flex-grow-1">
                               {% if request_to_follow %}
                                  Cancel
                               {% elif is_followed %}
@@ -102,7 +104,8 @@
                            </a>
                            {% if is_chat %}
                               <a class="btn btn-success" 
-                                 href="{% url 'chats:private_chat' is_chat.id %}" role="button">
+                                 href="{% url 'chats:private_chat' is_chat.id %}" 
+                                 role="button">
                                  Message
                               </a>
                            {% else %}
@@ -129,10 +132,11 @@
                   <a href="{{ post.get_absolute_url }}">
                      {% if post.file|slice:"-4:" == ".mp4" %}
                         <video height="225">
-                           <source src="{{ post.file }}" type="video/mp4">
+                           <source src="/media/{{ post.file }}" type="video/mp4">
                         </video>
                      {% else %}
-                        <img class="card-img-top" src="{{ post.file }}" alt="Card image cap" height="225">
+                        <img class="card-img-top" src="/media/{{ post.file }}" 
+                           alt="Card image cap" height="225">
                      {% endif %}
                   </a>
                   <div class="card-body bg-dark">
@@ -149,13 +153,15 @@
                   <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
                      <div class="card-body bg-dark">
                         {% if request.user == user %}
-                           <form action="{% url 'users:delete_story' story.id %}" method="post">
+                           <form action="{% url 'blogs:delete_story' story.id %}" 
+                              method="post">
                               {% csrf_token %}
                               <button class="btn btn-success">Delete</button>
                            </form>
                         {% endif %}
                      </div>
-                     <img class="card-img-top" src="{{ story.img.url }}" alt="Card image cap" height="225">
+                     <img class="card-img-top" src="{{ story.img.url }}" 
+                        alt="Card image cap" height="225">
                   </div>
                </div>
             {% endfor %}
@@ -165,7 +171,8 @@
    {% if user == request.user %}
       <p class="pt-3">
          <button class="btn btn-success" type="button" data-bs-toggle="collapse" 
-            data-bs-target="#collapseWidthExample" aria-expanded="false" aria-controls="collapseWidthExample">
+            data-bs-target="#collapseWidthExample" aria-expanded="false" 
+            aria-controls="collapseWidthExample">
             Recommendations
          </button>
       </p>

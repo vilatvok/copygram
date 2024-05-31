@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+{% load static %}
+
+{% block title %}Post{% endblock title %}
+
+{% block content %}
+   <div class="card" style="width: 22rem; border-radius: 20px; overflow: hidden;">
+      {% if files.count == 1 %}
+         {% with file=files.first.file %}
+            {% if file.name|slice:"-4:" == ".mp4" %}
+               <video class="playVideo" height="225" autoplay>
+                  <source src="{{ file.url }}" type="video/mp4">
+               </video>
+            {% else %}
+               <img src="{{ file.url }}" class="d-block w-100" height="225">
+            {% endif %}
+         {% endwith %}
+      {% else %}
+         <div id="carouselExample" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+               {% for file in files %}
+                  <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                     {% if file.file.name|slice:"-4:" == ".mp4" %}
+                        <video class="playVideo" height="225" autoplay>
+                           <source src="{{ file.file.url }}" type="video/mp4">
+                        </video>
+                     {% else %}
+                        <img src="{{ file.file.url }}" class="d-block w-100" height="225">
+                     {% endif %}
+                  </div>
+               {% endfor %}
+            </div>
+            <button class="carousel-control-prev" type="button" 
+               data-bs-target="#carouselExample" data-bs-slide="prev">
+               <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+               <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" 
+               data-bs-target="#carouselExample" data-bs-slide="next">
+               <span class="carousel-control-next-icon" aria-hidden="true"></span>
+               <span class="visually-hidden">Next</span>
+            </button>
+         </div>
+      {% endif %}
+      <div class="card-body bg-dark">
+         <p class="card-text text-light">
+            <a class="link-underline link-underline-opacity-0" 
+               href="{% url 'users:profile' post.owner.slug %}" >
+               {{ post.owner }}
+            </a>
+            {% if post.description %}:{% endif %} {{ post.description }}
+         </p>
+         {% for tag in tags %}
+            <a href="{% url 'blogs:tag_posts' tag.name %}">
+               <p class="text-muted">#{{ tag.name }}</p>
+            </a>
+         {% endfor %}
+         <p class="card-text text-light">Views: {{ total_views }}</p>  
+         <p class="card-text text-light">
+            {% if show_likes %}
+                <span id="total_likes">{{ post.likes_count }}</span>
+                likes  
+            {% endif %}
+         </p>
+         {% if post.owner == request.user %}
+            <form action="{% url 'blogs:delete_post' post.id %}" method="post">
+               {% csrf_token %}
+               <button class="btn btn-success">Delete</button>
+            </form>
+            <form action="{% url 'blogs:restore_post' post.id %}" method="post">
+                {% csrf_token %}
+                <button class="btn btn-success">Restore</button>
+            </form>
+         {% endif %}
+         <p class="card-text mt-2"><small class="text-muted">{{ post.date }}</small></p>
+      </div>
+   </div>
+   {% if show_comments %}
+      <div class="row d-flex justify-content-left mt-5">
+         <div class="col-md-8 col-lg-6">
+            <div class="card shadow-0 border" 
+               style="background-color: #f0f2f5; border-radius: 20px; overflow: hidden;">
+               <div class="card-body p-4">
+                  <form action="{% url 'blogs:add_comment' post.id %}" method="post">
+                     {% csrf_token %}
+                     <div class="form-outline mb-4">
+                        <input type="text" id="addANote" 
+                           class="form-control" name='q' 
+                           placeholder="Type comment..." />
+                        <button class="btn btn-success mt-2">Send</button>
+                     </div>
+                  </form>
+                  {% for comment in comments %}
+                     <div class="card mb-4">
+                        <div class="card-body">
+                           <p>{{ comment.text }}</p>
+                           <div class="d-flex justify-content-between">
+                              <div class="d-flex flex-row align-items-center">
+                                 {% if comment.owner.avatar %}
+                                    <img src="{{ comment.owner.avatar.url }}" alt="avatar" width="25"
+                                       height="25" />
+                                 {% else %}
+                                    <img src="{% static 'users/img/user.png' %}" alt="avatar" width="25"
+                                       height="25" />
+                                 {% endif %}
+                                 <p>{{ comment.owner }}</p>
+                              </div>
+                              <div class="d-flex flex-row align-items-center">
+                                 <p class="small text-muted mb-0">{{ comment.date }}</p>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  {% empty %}
+                     <div class="alert alert-info" role="alert">
+                        There is no any comment.
+                     </div>
+                  {% endfor %}
+               </div>
+            </div>
+         </div>
+      </div>
+   {% endif %}
+{% endblock content %}

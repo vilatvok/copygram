@@ -6,6 +6,8 @@ from django.contrib.contenttypes.fields import (
 )
 from django.contrib.contenttypes.models import ContentType
 
+from chats.managers import ChatManager
+
 
 User = get_user_model()
 
@@ -18,16 +20,15 @@ class RoomChat(models.Model):
         related_name='room_owner',
     )
     image = models.ImageField(
-        upload_to='rooms/',
+        upload_to='rooms/%Y/%m/%d/',
         default='static/images/group.png',
     )
     name = models.CharField(max_length=50)
     created = models.DateTimeField(auto_now_add=True)
     users = models.ManyToManyField(to=User, related_name='rooms')
-    messages = GenericRelation(
-        to='Message',
-        related_query_name='room_chat',
-    )
+    messages = GenericRelation('Message', related_query_name='room_chat')
+
+    objects = ChatManager()
 
     def __str__(self):
         return self.name
@@ -44,10 +45,9 @@ class PrivateChat(models.Model):
         on_delete=models.CASCADE,
         related_name='second_private',
     )
-    messages = GenericRelation(
-        to='Message',
-        related_query_name='private_chat',
-    )
+    messages = GenericRelation('Message', related_query_name='private_chat')
+
+    objects = ChatManager()
 
 
 class Message(models.Model):
@@ -61,15 +61,16 @@ class Message(models.Model):
     content_type = models.ForeignKey(
         to=ContentType,
         on_delete=models.CASCADE,
+        limit_choices_to={'model__in': ('roomchat', 'privatechat')}
     )
     object_id = models.PositiveIntegerField()
     chat = GenericForeignKey('content_type', 'object_id')
 
 
-class MessageImages(models.Model):
+class MessageImage(models.Model):
     message = models.ForeignKey(
         to=Message,
         on_delete=models.CASCADE,
         related_name='files'
     )
-    file = models.FileField(blank=True, upload_to='messages/')
+    file = models.FileField(blank=True, upload_to='messages/%Y/%m/%d/')

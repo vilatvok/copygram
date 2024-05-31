@@ -1,19 +1,16 @@
+from django.db import transaction
+from django.db.models import Q
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes
 from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import default_token_generator
-from django.db import transaction
-from django.db.models import Q, Count
-
-from rest_framework.response import Response
-
-from users.serializers import UserSerializer
-from users.models import Action, Follower, Block
 
 from common.utils import create_action, redis_client
 
-from blogs.models import Comment
+from users.models import Action, Follower, Block
+
+from blogs.models import Comment, Post
 
 
 User = get_user_model()
@@ -26,7 +23,7 @@ class Recommender:
     """
 
     def get_key(self, user):
-        return f'user:{user.id}:recommend'
+        return f'user:{user.id}:recommendations'
 
     def add_suggestions(self, user, others):
         result = []
@@ -49,10 +46,12 @@ class Recommender:
         return suggestions_users
 
 
-def set_blocked(user, request):
-    blocked = user.blocked.all().values_list('blocked_by', flat=True)
-    blocked_by = user.blocked_by.all().values_list('blocked', flat=True)
-    request.session['blocked'] = list(blocked) + list(blocked_by)
+def get_user_posts(user):
+    posts = (
+        Post.objects.annotated().
+        exclude(archived=True).filter(owner=user)
+    )
+    return posts
 
 
 def send_reset_email(user, link):
@@ -74,9 +73,10 @@ def follow_to_user(from_user, to_user):
         from_user=from_user,
         to_user=to_user,
     )
-    others = User.objects.filter(
-        followers__from_user=to_user,
-    ).exclude(id=from_user.id)
+    others = (
+        User.objects.filter(followers__from_user=to_user).
+        exclude(id=from_user.id)
+    )
 
     recommender = Recommender()
 
@@ -113,11 +113,11 @@ def block_user(request, from_user, to_user):
     is_blocked = Block.objects.filter(block_from=from_user, block_to=to_user)
     if is_blocked.exists():
         is_blocked.delete()
-        set_blocked(from_user, request)
         return 'Unblocked'
     else:
         with transaction.atomic():
             Block.objects.create(block_from=from_user, block_to=to_user)
+
             posts = from_user.likes.filter(owner=to_user)
             user_posts = to_user.likes.filter(owner=from_user)
 
@@ -130,16 +130,16 @@ def block_user(request, from_user, to_user):
                 Q(owner=to_user, post__owner=from_user) |
                 Q(owner=from_user, post__owner=to_user)
             ).delete()
+
             Follower.objects.filter(
                 Q(from_user=to_user, to_user=from_user) |
                 Q(from_user=from_user, to_user=to_user)
             ).delete()
+
             Action.objects.filter(
                 Q(owner=to_user, post__owner=from_user) |
                 Q(owner=to_user, user=from_user) |
                 Q(owner=from_user, post__owner=to_user) |
                 Q(owner=from_user, user=to_user)
             ).delete()
-            set_blocked(from_user, request)
             return 'Blocked'
-

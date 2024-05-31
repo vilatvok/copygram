@@ -39,8 +39,8 @@ password_urls = [
     ),
     path(
         route='password-user-confirm/',
-        view=templates.UserConfirmView.as_view(),
-        name='user_confirm',
+        view=templates.PasswordUserConfirmView.as_view(),
+        name='password_user_confirm',
     ),
     path(
         route='password-reset/done/',
@@ -123,11 +123,6 @@ urlpatterns = [
         name='delete_account',
     ),
     path('users/<slug:user_slug>/', include(user_urls)),
-    path(
-        route='delete-story/<int:story_id>/',
-        view=templates.DeleteStoryView.as_view(),
-        name='delete_story',
-    ),
     path(
         route='delete-action/<int:action_id>/',
         view=templates.DeleteActionView.as_view(),

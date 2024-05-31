@@ -7,6 +7,8 @@ from django.contrib.contenttypes.fields import (
 )
 from django.utils.text import slugify
 
+from users.managers import CustomUserManager
+
 
 class User(AbstractUser):
     """Override default user model."""
@@ -16,13 +18,19 @@ class User(AbstractUser):
     ]
 
     slug = models.SlugField(unique=True, max_length=255)
-    avatar = models.ImageField(upload_to='users/', blank=True, null=True)
+    avatar = models.ImageField(
+        upload_to='users/%Y/%m/%d/',
+        blank=True,
+        null=True,
+    )
     email = models.EmailField()
     is_online = models.BooleanField(default='False')
     last_activity = models.DateTimeField(blank=True, null=True)
-    user_action = GenericRelation(to='Action', related_query_name='user')
+    user_actions = GenericRelation(to='Action', related_query_name='user')
     bio = models.TextField(blank=True)
     gender = models.CharField(choices=GENDER)
+
+    objects = CustomUserManager()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -68,6 +76,9 @@ class UserPrivacy(models.Model):
         default='everyone',
     )
     
+    class Meta:
+        verbose_name_plural = 'Users privacy'
+
 
 class Action(models.Model):
     """
@@ -86,10 +97,9 @@ class Action(models.Model):
     content_type = models.ForeignKey(
         to=ContentType,
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
+        limit_choices_to={'model__in': ('post', 'comment', 'user')}
     )
-    object_id = models.PositiveIntegerField(null=True, blank=True)
+    object_id = models.PositiveIntegerField()
     target = GenericForeignKey('content_type', 'object_id')
 
     def __str__(self):
@@ -157,3 +167,25 @@ class Report(models.Model):
         related_name='reports_by',
     )
     reason = models.TextField()
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.report_from} report on {self.report_on}'
+
+
+class Archive(models.Model):
+    content_type = models.ForeignKey(
+        to=ContentType,
+        on_delete=models.CASCADE,
+        limit_choices_to={'model__in': ('post', 'story')},
+    )
+    object_id = models.PositiveIntegerField()
+    target = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['content_type', 'object_id'],
+                name='unique_archive',
+            ),
+        ]

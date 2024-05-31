@@ -9,15 +9,16 @@
         <div class="card text-center mt-2">
             <div class="card-body">
                 <h5 class="card-title">{{ room.name }}</h5>
-                <form method="post" action="{% url 'chats:delete_room' room.id %}">
-                    {% csrf_token %}
-                    <a href="{% url 'chats:room_chat' room.id %}" class="btn btn-success">Enter in the room</a>
-                    <button class="btn btn-success">Delete</button>
-                </form>
+                <a href="{% url 'chats:room_chat' room.id %}" 
+                    class="btn btn-success">Enter in the room</a>
+                {% if request.user == room.owner %}
+                    <form method="post" action="{% url 'chats:delete_room' room.id %}">
+                        {% csrf_token %}
+                        <button class="btn btn-success">Delete</button>
+                    </form>
+                {% endif %}
             </div>
-            <div class="card-footer text-body-secondary">
-                {{ room.messages.last.timestamp }}
-            </div>
+            <div class="card-footer text-body-secondary">{{ room.last_message_time }}</div>
         </div>
     {% endfor %}
 {% endblock content %}

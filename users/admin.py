@@ -1,7 +1,15 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from users.models import Action, Block, Follower, Report, User, UserPrivacy
+from users.models import (
+    Action,
+    Archive,
+    Block,
+    Follower,
+    Report,
+    User,
+    UserPrivacy,
+)
 
 
 @admin.register(User)
@@ -45,6 +53,12 @@ class UserAdmin(UserAdmin):
     prepopulated_fields = {'slug': ['username']}
 
 
+@admin.register(Archive)
+class ArchiveAdmin(admin.ModelAdmin):
+    list_display = ('id', 'target')
+    list_filter = ('target',)
+
+
 @admin.register(Action)
 class ActionAdmin(admin.ModelAdmin):
     list_display = (
@@ -52,12 +66,13 @@ class ActionAdmin(admin.ModelAdmin):
         'owner',
         'date',
         'act',
+        'object_id',
         'file',
         'unread',
-        'content_type',
-        'object_id',
     )
-    list_filter = ('owner', 'date', 'unread', 'content_type')
+    list_filter = ('owner', 'date', 'unread')
+    readonly_fields = ('unread',)
+    autocomplete_fields = ('owner',)
 
 
 @admin.register(Follower)
@@ -74,9 +89,17 @@ class BlockAdmin(admin.ModelAdmin):
 
 @admin.register(Report)
 class ReportAdmin(admin.ModelAdmin):
-    list_display = ('id', 'report_from', 'report_on')
+    list_display = ('id', 'report_from', 'report_on', 'date')
+    list_filter = ('report_from', 'report_on', 'date')
 
 
 @admin.register(UserPrivacy)
 class UserPrivacyAdmin(admin.ModelAdmin):
-    list_display = ('user',)
+    list_display = (
+        'user',
+        'private_account',
+        'comments',
+        'likes',
+        'online_status',
+    )
+    list_editable = ('private_account', 'comments', 'likes', 'online_status')

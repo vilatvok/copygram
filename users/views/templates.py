@@ -1,6 +1,4 @@
 from django.db import models, transaction
-from django.db.models.functions import Concat
-from django.conf import settings
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.shortcuts import redirect
@@ -22,9 +20,6 @@ from django.contrib.postgres.search import (
     SearchQuery,
     SearchRank,
 )
-from django.core.exceptions import PermissionDenied
-
-from django_celery_beat.models import PeriodicTask
 
 from two_factor.views.core import SetupView, LoginView
 from two_factor.views.profile import DisableView
@@ -32,7 +27,7 @@ from two_factor.utils import default_device
 
 from taggit.models import Tag
 
-from common.utils import get_posts, redis_client
+from common.utils import redis_client, get_blocked_users
 
 from users.forms import (
     ReportForm,
@@ -47,11 +42,11 @@ from users.utils import (
     Recommender,
     block_user,
     follow_to_user,
+    get_user_posts,
     send_reset_email,
-    set_blocked,
 )
 
-from blogs.models import PostMedia, Story
+from blogs.models import Post, Story
 
 from chats.models import PrivateChat
 
@@ -71,11 +66,6 @@ class LoginUserView(LoginView):
     )
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
-
-    def done(self, form_list, **kwargs):
-        user = self.get_user()
-        set_blocked(user, self.request)
-        return super().done(form_list, **kwargs)
 
 
 class SetupTwoFaView(SetupView):
@@ -110,13 +100,12 @@ class RegisterView(CreateView):
             password=form.cleaned_data['password1'],
         )
         login(request, user)
-        set_blocked(user, request)
         return response
 
 
 class PasswordResetView(FormView):
     template_name = 'users/password_reset.html'
-    success_url = reverse_lazy('users:user_confirm')
+    success_url = reverse_lazy('users:password_user_confirm')
     form_class = CustomPasswordResetForm
 
     def form_valid(self, form):
@@ -124,8 +113,8 @@ class PasswordResetView(FormView):
         return super().form_valid(form)
 
 
-class UserConfirmView(TemplateView):
-    template_name = 'users/user_confirm.html'
+class PasswordUserConfirmView(TemplateView):
+    template_name = 'users/password_user_confirm.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -136,10 +125,10 @@ class UserConfirmView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         response = request.POST.get('confirm')
+        email = request.session.pop('email')
         if response == 'yes':
-            email = request.session.pop('email')
             user = User.objects.get(email=email)
-            link = 'http://127.0.0.1:8000/users/password-reset'
+            link = 'http://127.0.0.1:8000/users/password-reset/'
             send_reset_email(user, link)
             return redirect('users:password_reset_done')
         else:
@@ -154,8 +143,9 @@ class ProfileView(DetailView):
     context_object_name = 'user'
     slug_url_kwarg = 'user_slug'
 
-    def dispatch(self, request, *args, **kwargs):
-        user = self.get_object()
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        user = self.object
         current_user = request.user
         if user != current_user:
             is_blocked = Block.objects.filter(
@@ -164,14 +154,14 @@ class ProfileView(DetailView):
             ).exists()
             if is_blocked:
                 return redirect('users:profile', current_user.slug)
-        return super().dispatch(request, *args, **kwargs)
+        return response
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.object
         current_user = self.request.user
 
-        context['posts'] = get_posts(user=user)
+        context['posts'] = get_user_posts(user=user)
         context['followers'] = user.followers.count()
         context['following'] = user.following.count()
 
@@ -198,9 +188,10 @@ class ProfileView(DetailView):
         if chat.exists():
             context['is_chat'] = chat[0]
 
+        blocked_users = get_blocked_users(current_user)
         context['stories'] = (
             Story.objects.filter(owner=user).
-            exclude(owner__in=self.request.session['blocked']).
+            exclude(owner__in=blocked_users).
             select_related('owner')
         )
 
@@ -241,17 +232,14 @@ class ActivityView(ListView):
 
     def get_queryset(self):
         user = self.request.user
-        subquery = PostMedia.objects.filter(
-            post=models.OuterRef('pk'),
-        ).values('file')[:1]
         posts = (
-            user.likes.select_related('owner').prefetch_related('tags').
-            annotate(file=Concat(
-                models.Value(settings.MEDIA_URL),
-                models.Subquery(subquery, output_field=models.CharField()),
-            ))
+            Post.objects.annotated().
+            exclude(archived=True).filter(likes=user)
         )
-        comments = user.comment_owner.all()
+        comments = (
+            user.comments.exclude(post__archived=True).
+            select_related('post', 'owner')
+        )
         return {'posts': posts, 'comments': comments}
 
 
@@ -262,7 +250,8 @@ class ActionsView(ListView):
     def get_queryset(self):
         user = self.request.user
         actions = Action.objects.filter(
-            models.Q(post__owner=user) | models.Q(user=user),
+            models.Q(post__owner=user) | 
+            models.Q(user=user),
         ).select_related('owner', 'content_type')
         redis_client.delete(f'user:{user.id}:unread_actions')
         return actions
@@ -274,36 +263,30 @@ class SavedPostsView(ListView):
 
     def get_queryset(self):
         user = self.request.user
-        subquery = PostMedia.objects.filter(
-            post=models.OuterRef('pk'),
-        ).values('file')[:1]
         posts = (
-            user.saved.select_related('owner').prefetch_related('tags').
-            annotate(file=Concat(
-                models.Value(settings.MEDIA_URL),
-                models.Subquery(subquery, output_field=models.CharField())
-            ))
+            Post.objects.annotated().
+            exclude(archived=True).filter(saved=user)
         )
         return posts
 
 
 class FollowersView(FollowersMixin):
-    template_name = 'users/followers.html'
+    extra_context = {'title': 'followers'}
 
     def get_queryset(self):
-        queryset = super().get_queryset().filter(
-            following__to_user__slug=self.kwargs['user_slug'],
-        )
+        qs = super().get_queryset()
+        user_slug = self.kwargs['user_slug']
+        queryset = qs.filter(following__to_user__slug=user_slug)
         return queryset
 
 
 class FollowingView(FollowersMixin):
-    template_name = 'users/following.html'
+    extra_context = {'title': 'following'}
 
     def get_queryset(self):
-        queryset = super().get_queryset().filter(
-            followers__from_user__slug=self.kwargs['user_slug'],
-        )
+        qs = super().get_queryset()
+        user_slug = self.kwargs['user_slug']
+        queryset = qs.filter(followers__from_user__slug=user_slug)
         return queryset
 
 
@@ -314,9 +297,8 @@ class BlockedView(ListView):
     context_object_name = 'users'
 
     def get_queryset(self):
-        queryset = User.objects.filter(
-            blocked_by__block_from=self.request.user,
-        )
+        user = self.request.user
+        queryset = User.objects.blocked(user=user)
         return queryset
 
 
@@ -335,8 +317,9 @@ class SearchView(ListView):
             from_user=request.user,
             to_user=models.OuterRef('pk'),
         )
+        blocked_users = get_blocked_users(request.user)
         users_queryset = (
-            User.objects.exclude(id__in=request.session['blocked']).
+            User.objects.exclude(id__in=blocked_users).
             annotate(
                 search=search_vector,
                 rank=SearchRank(search_vector, query),
@@ -353,26 +336,6 @@ class SearchView(ListView):
         ).filter(search=query).order_by("-rank")
 
         return {'users': users_queryset, 'tags': tags_queryset}
-
-
-class DeleteStoryView(DeleteView):
-    model = Story
-    pk_url_kwarg = 'story_id'
-
-    def dispatch(self, request, *args, **kwargs):
-        story = self.get_object()
-        if request.user != story.owner:
-            raise PermissionDenied('You cant delete this story')
-        return super().dispatch(request, *args, **kwargs)
-    
-    def form_valid(self, form):
-        PeriodicTask.objects.get(
-            name=f'delete-story-{self.object.id}'
-        ).delete()
-        return super().form_valid(form)
-    
-    def get_success_url(self):
-        return reverse_lazy('users:profile', args=[self.request.user.slug])
 
 
 class CreateReportView(CreateView):
@@ -423,7 +386,8 @@ class ClearActionsView(View):
     def post(self, request):
         user = request.user
         Action.objects.filter(
-            models.Q(post__owner=user) | models.Q(user=user),
+            models.Q(post__owner=user) |
+            models.Q(user=user),
         ).delete()
         return redirect('users:actions')
 

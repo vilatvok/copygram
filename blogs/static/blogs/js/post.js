@@ -45,32 +45,37 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 console.error(error)
             })
     })
-    const deleteButtons = document.querySelectorAll('.delete-comment');
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function(event) {
-            event.preventDefault()
-            const comment = button.getAttribute('id')
-            const split = comment.split('-')
-            const comment_id = split[1]
-            const options = {
-                method: 'DELETE',
-                headers: {'X-CSRFToken': csrftoken},
-                mode: 'same-origin'
-            }
-            // Make a request to delete the comment
-            fetch(comment_url.replace('0', comment_id), options)
-                .then(response => response.json())
-                .then(data => {
-                    if (data["status"] == "Ok") {
-                        const commentElement = document.querySelector('.card.mb-4');
-                        commentElement.remove()
-                    }
-                })
-                .catch(error => {
-                    console.error("Fetch error", error);
-                });
-        });
-    })
+    const deleteCommentButtons = document.querySelectorAll('.delete-comment');
+
+    function delete_comments(btns) {
+        btns.forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.preventDefault()
+                const comment = button.getAttribute('id')
+                const split = comment.split('-')
+                const comment_id = split[1]
+                const options = {
+                    method: 'DELETE',
+                    headers: {'X-CSRFToken': csrftoken},
+                    mode: 'same-origin'
+                }
+                const comment_url = `http://localhost:8000/posts/${post_id}/delete-comment/${comment_id}/`
+                // Make a request to delete the comment
+                fetch(comment_url, options)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data["status"] == "Ok") {
+                            const commentElement = document.querySelector(`.comment-frame-${comment_id}`)
+                            commentElement.remove()
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Fetch error", error);
+                    });
+            });
+        })
+    }
+    delete_comments(deleteCommentButtons);
 
     const playVideo = document.querySelectorAll('.playVideo')
     playVideo.forEach(btn => {

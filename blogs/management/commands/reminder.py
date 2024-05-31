@@ -19,7 +19,7 @@ class Command(BaseCommand):
         days = options['days']
         date = timezone.now() - timedelta(days=days or 3)
         users = (
-            get_user_model().objects.annotate(count_post=Count('post_owner')).
+            get_user_model().objects.annotate(count_post=Count('posts')).
             filter(count_post=0, last_activity__lte=date)
         )
         for user in users:

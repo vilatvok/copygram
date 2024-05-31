@@ -14,10 +14,11 @@
                   <a href="{{ post.get_absolute_url }}">
                      {% if post.file|slice:"-4:" == ".mp4" %}
                         <video height="225">
-                           <source src="{{ post.file }}" type="video/mp4">
+                           <source src="/media/{{ post.file }}" type="video/mp4">
                         </video>
                      {% else %}
-                        <img class="card-img-top" src="{{ post.file }}" alt="Card image cap" height="225">
+                        <img class="card-img-top" src="/media/{{ post.file }}" 
+                           alt="Card image cap" height="225">
                      {% endif %}
                   </a>
                   <div class="card-body bg-dark">
@@ -32,12 +33,18 @@
       </div>
    {% endif %}
    <p class="display-5">Commented posts:</p>
-   <div class="list-group d-inline-flex p-2">
-      {% for comment in data.comments %}
-         <a href="{% url 'blogs:post' comment.post.id %}" 
-            class="list-group-item list-group-item-action bg-dark text-light">
-            {{ comment.text }}
-         </a>
-      {% endfor %}
-   </div>
+   {% if data.comments %}
+      <div class="list-group d-inline-flex p-2">
+         {% for comment in data.comments %}
+            <a href="{% url 'blogs:post' comment.post.id %}" 
+               class="list-group-item list-group-item-action bg-dark text-light">
+               {{ comment.text }}
+            </a>
+         {% endfor %}
+      </div>
+   {% else %}
+      <div class="alert alert-info" role="alert">
+         There is no any comment.
+      </div>
+   {% endif %}
 {% endblock content %}

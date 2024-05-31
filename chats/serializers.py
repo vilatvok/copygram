@@ -43,7 +43,14 @@ class RoomChatSerializer(BaseChatSerializer):
 
     class Meta:
         model = RoomChat
-        fields = '__all__'
+        fields = [
+            'id',
+            'owner',
+            'created',
+            'users',
+            'name',
+            'image',
+        ]
 
 
 class PrivateChatSerializer(BaseChatSerializer):
@@ -52,3 +59,35 @@ class PrivateChatSerializer(BaseChatSerializer):
     class Meta:
         model = PrivateChat
         fields = ['id', 'user']
+
+
+class RoomChatsSerializer(RoomChatSerializer):
+    last_message = serializers.SerializerMethodField()
+
+    def get_last_message(self, instance):
+        data = {
+            'user': instance.last_message_user,
+            'date': instance.last_message_time,
+            'text': instance.last_message,
+        }
+        return data
+
+    class Meta:
+        model = RoomChat
+        fields = RoomChatSerializer.Meta.fields + ['last_message']
+
+
+class PrivateChatsSerializer(PrivateChatSerializer):
+    last_message = serializers.SerializerMethodField()
+
+    def get_last_message(self, instance):
+        data = {
+            'user': instance.last_message_user,
+            'date': instance.last_message_time,
+            'text': instance.last_message,
+        }
+        return data
+
+    class Meta:
+        model = PrivateChat
+        fields = PrivateChatSerializer.Meta.fields + ['last_message']

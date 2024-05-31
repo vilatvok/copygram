@@ -1,17 +1,17 @@
 from redis import Redis
 
-from django.conf import settings
 from django.utils import timezone
+from django.core.cache import cache
 from django.contrib.contenttypes.models import ContentType
-from django.db.models.functions import Concat
-from django.db.models import Value, Subquery, CharField, OuterRef, Count
-from rest_framework.fields import empty
 
+from rest_framework import mixins
+from rest_framework.viewsets import GenericViewSet
+
+from rest_framework.fields import empty
 from rest_framework.serializers import BaseSerializer
 
 from datetime import timedelta
 
-from blogs.models import PostMedia, Post
 from users.models import Action
 
 
@@ -55,36 +55,18 @@ def create_action(owner, act, target, file=None):
         redis_client.sadd(key, action.id)
 
 
-def get_posts(user=None, blocked=[]):
-    subquery = PostMedia.objects.filter(
-        post=OuterRef('pk'),
-    ).values('file')[:1]
-
-    if user:
-        queryset = (
-            Post.objects.filter(owner=user).
-            select_related('owner').prefetch_related('tags').
-            annotate(
-                likes_count=Count('likes'),
-                file=Concat(
-                    Value(settings.MEDIA_URL),
-                    Subquery(subquery, output_field=CharField()),
-                ),
-            )
-        )
-    else:
-        queryset = (
-            Post.objects.exclude(owner__in=blocked).
-            select_related('owner').prefetch_related('tags').
-            annotate(
-                likes_count=Count('likes'),
-                file=Concat(
-                    Value(settings.MEDIA_URL),
-                    Subquery(subquery, output_field=CharField()),
-                ),
-            )
-        )
-    return queryset
+def get_blocked_users(user):
+    key1 = 'blocked_from'
+    key2 = 'blocked_by'
+    blocked = cache.get(key1)
+    blocked_by = cache.get(key2)
+    if blocked is None:
+        blocked = user.blocked.values_list('block_to', flat=True)
+        cache.set(key1, blocked, 60 * 60)
+    if blocked_by is None:
+        blocked_by = user.blocked_by.values_list('block_from', flat=True)
+        cache.set(key2, blocked_by, 60 * 60)
+    return list(blocked) + list(blocked_by)
 
 
 def set_serializer_fields(fields, old_fields):
@@ -96,7 +78,17 @@ def set_serializer_fields(fields, old_fields):
 
 class CustomSerializer(BaseSerializer):
     def __init__(self, instance=None, data=empty, **kwargs):
-        fields = kwargs.pop('fields', None)
+        fields = kwargs.pop('exclude', None)
         super().__init__(instance, data, **kwargs)
         if fields:
             set_serializer_fields(fields, self.fields)
+
+
+class NonUpdateViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericViewSet,
+):
+    pass

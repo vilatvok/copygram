@@ -6,7 +6,6 @@ User = get_user_model()
 
 
 class EmailBackend(BaseBackend):
-    """Backend for user email login."""
     def authenticate(self, request, username=None, password=None, **kwargs):
         user = User
         try:

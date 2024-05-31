@@ -24,36 +24,38 @@ from rest_framework.routers import DefaultRouter
 from two_factor.urls import urlpatterns as tf_urls
 
 from copygram.yasg import urlpatterns as doc
-from users.views import api
-from blogs.views.api import PostViewSet, StoryViewSet, TagViewSet
-from chats.views.api import RoomChatViewSet, PrivateChatViewSet
+from users.views import api as users_api
+from blogs.views import api as blogs_api
+from chats.views import api as chats_api
 
 
 r = DefaultRouter()
-r.register(r'tags', TagViewSet, 'tag')
-r.register(r'users', api.UserViewSet, 'user')
-r.register(r'saved-posts', api.SavedPostsViewSet, 'saved-post')
-r.register(r'actions', api.ActionViewSet, 'action')
-r.register(r'activity', api.ActivityViewSet, 'activity')
-r.register(r'blocked', api.BlockedUsersViewSet, 'blocked')
-r.register(r'recommendations', api.RecommendationViewSet, 'recommendation')
-r.register(r'posts', PostViewSet, 'post')
-r.register(r'rooms', RoomChatViewSet, 'room')
-r.register(r'chats', PrivateChatViewSet, 'chat')
-r.register(r'stories', StoryViewSet, 'story')
+r.register(r'tags', blogs_api.TagViewSet, 'tag')
+r.register(r'users', users_api.UserViewSet, 'user')
+r.register(r'posts', blogs_api.PostViewSet, 'post')
+r.register(r'stories', blogs_api.StoryViewSet, 'story')
+r.register(r'rooms', chats_api.RoomChatViewSet, 'room')
+r.register(r'chats', chats_api.PrivateChatViewSet, 'chat')
+r.register(r'actions', users_api.ActionViewSet, 'action')
+r.register(r'archive', blogs_api.ArchiveViewSet, 'archive')
+r.register(r'activity', users_api.ActivityViewSet, 'activity')
+r.register(r'blocked', users_api.BlockedUsersViewSet, 'blocked')
+r.register(r'saved-posts', users_api.SavedPostsViewSet, 'saved-post')
+r.register(r'recommendations', users_api.RecommendationViewSet, 'recommendation')
 
 
 urlpatterns = [
-    path('', include('users.urls')),
-    path('', include('chats.urls')),
     path('admin/', admin.site.urls),
-    path('posts/', include('blogs.urls')),
-    path('api/', include(r.urls)),
-
     path('auth/', include('rest_framework.urls')),
     path('__debug__/', include('debug_toolbar.urls')),
     path('social-auth/', include('social_django.urls', namespace='social')),
     path('two/', include(tf_urls)),
+
+    path('api/', include(r.urls)),
+    path('', include('users.urls')),
+    path('', include('chats.urls')),
+    path('', include('blogs.urls', namespace='blogs')),
+
 ]
 
 urlpatterns += doc

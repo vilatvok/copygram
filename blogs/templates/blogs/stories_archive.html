@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load bootstrap5 %}
+{% load static %}
+
+{% block title %}Stories{% endblock title %}
+
+{% block content %}
+    {% if stories %}
+        <div class="row row-cols-1 row-cols-md-5 g-4">
+            {% for story in stories %}
+                <div class="col">
+                    <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
+                        <div class="card-body bg-dark">
+                            <form action="{% url 'blogs:delete_story' story.id %}" method="post">
+                                {% csrf_token %}
+                                <button class="btn btn-success">Delete</button>
+                            </form>
+                        </div>
+                        <img class="card-img-top" src="{{ story.img.url }}" 
+                            alt="Card image cap" height="225">
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            There is no any story.
+        </div>
+    {% endif %}
+{% endblock content %}

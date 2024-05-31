@@ -1,6 +1,5 @@
 from django.db import transaction
-from django.db.models import Q, Count, Subquery, OuterRef
-from django.http import Http404
+from django.db.models import Q
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
 from django.contrib.auth import get_user_model
@@ -9,8 +8,8 @@ from django.views import View
 from django.views.generic.list import ListView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 
-from chats.mixins import BaseChatMixin
-from chats.models import Message, RoomChat, PrivateChat
+from chats.mixins import ChatMixin
+from chats.models import RoomChat, PrivateChat
 from chats.forms import RoomForm, EditRoomForm
 
 
@@ -22,23 +21,12 @@ class PrivateChatsView(ListView):
     context_object_name = 'chats'
 
     def get_queryset(self):
-        # Retrieve information about the last message to show it in template
-        last_message_user = (
-            Message.objects.filter(object_id=OuterRef('pk')).
-            order_by('-timestamp').values('user__username')[:1]
-        )
-        last_message = (
-            Message.objects.filter(object_id=OuterRef('pk')).
-            order_by('-timestamp').values('content')[:1]
-        )
-
-        # Annotate objects with last message
-        return PrivateChat.objects.filter(
-            Q(first_user=self.request.user) | Q(second_user=self.request.user)
-        ).annotate(
-            last_message_user=Subquery(last_message_user),
-            last_message=Subquery(last_message),
+        user = self.request.user        
+        qs = PrivateChat.objects.annotated().filter(
+            Q(first_user=user) |
+            Q(second_user=user),
         ).select_related('first_user', 'second_user')
+        return qs
 
 
 class RoomChatsView(ListView):
@@ -46,38 +34,37 @@ class RoomChatsView(ListView):
     context_object_name = 'rooms'
 
     def get_queryset(self):
-        return RoomChat.objects.only('id', 'name', 'messages').filter(
-            users__in=[self.request.user],
+        qs = (
+            RoomChat.objects.annotated().
+            filter(users__in=[self.request.user]).
+            select_related('owner')
         )
+        return qs
 
 
-class PrivateChatView(BaseChatMixin):
-    model = PrivateChat
+class PrivateChatView(ChatMixin):
+    queryset = PrivateChat.objects.select_related('first_user', 'second_user')
     url_name = 'chat'
     context_object_name = 'chat'
 
-    def dispatch(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
         user = request.user
-        try:
-            chat = self.get_object()
-        except PrivateChat.DoesNotExist:
-            raise Http404('Not found or this chat was deleted')
-        if user not in [chat.first_user, chat.second_user]:
-            raise PermissionDenied("You can't see this chat")
-        return super().dispatch(request, *args, **kwargs)
+        if user not in [self.object.first_user, self.object.second_user]:
+            raise PermissionDenied("You can't enter this chat")
+        return response
 
 
-class RoomChatView(BaseChatMixin):
-    model = RoomChat
+class RoomChatView(ChatMixin):
+    queryset = RoomChat.objects.select_related('owner')
     url_name = 'room'
     context_object_name = 'chat'
 
-    def dispatch(self, request, *args, **kwargs):
-        user = request.user
-        room = self.get_object()
-        if user not in room.users.all():
-            raise PermissionDenied("You can't see this room")
-        return super().dispatch(request, *args, **kwargs)
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if request.user not in self.object.users.all():
+            raise PermissionDenied("You can't enter this room")
+        return response
 
 
 class CreateRoomView(CreateView):
@@ -109,22 +96,23 @@ class RoomUsersView(ListView):
     pk_url_kwarg = 'room_id'
 
     def get_queryset(self):
+        user = self.request.user
         room = RoomChat.objects.only('users').get(id=self.kwargs['room_id'])
-        query = room.users.all()
-        return query.annotate(follower_count=Count('followers'))
+        qs = User.objects.annotated(current_user=user).filter(rooms=room)
+        return qs
 
 
 class EditRoomView(UpdateView):
-    model = RoomChat
+    queryset = RoomChat.objects.select_related('owner').prefetch_related('users')
     form_class = EditRoomForm
     template_name = 'chats/edit_room.html'
     pk_url_kwarg = 'room_id'
 
-    def dispatch(self, request, *args, **kwargs):
-        room = self.get_object()
-        if room.owner != request.user:
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if self.object.owner != request.user:
             raise PermissionDenied('You dont have permission')
-        return super().dispatch(request, *args, **kwargs)
+        return response
 
     def get_success_url(self):
         return reverse_lazy('chats:room_chat', args=[self.object.id])
@@ -150,6 +138,11 @@ class DeleteRoomView(DeleteView):
     success_url = reverse_lazy('chats:rooms')
     pk_url_kwarg = 'room_id'
 
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if self.object.owner != request.user:
+            raise PermissionDenied('You dont have permission')
+        return response
 
 class CreatePrivateChatView(View):
     def post(self, request, user_slug):

@@ -10,13 +10,17 @@
          {% for post in posts %}
             <div class="col">
                <div class="card h-100" style="border-radius: 20px; overflow: hidden;">
-                  <a href="{{ post.get_absolute_url }}">
+                  {% if url == 'archived' %}
+                     <a href="{% url 'blogs:archived_post' post.id %}">
+                  {% else %}
+                     <a href="{{ post.get_absolute_url }}">
+                  {% endif %}
                      {% if post.file|slice:"-4:" == ".mp4" %}
                         <video height="225">
-                           <source src="{{ post.file }}" type="video/mp4">
+                           <source src="/media/{{ post.file }}" type="video/mp4">
                         </video>
                      {% else %}
-                        <img class="card-img-top" src="{{ post.file }}" 
+                        <img class="card-img-top" src="/media/{{ post.file }}" 
                            alt="Card image cap" height="225">
                      {% endif %}
                   </a>

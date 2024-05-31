@@ -16,31 +16,56 @@ class CommentSerializer(CustomSerializer, serializers.ModelSerializer):
         view_name='post-detail',
         read_only=True,
     )
+    likes = serializers.IntegerField(read_only=True, source='likes_count')
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['owner', 'post', 'text', 'date']
+        fields = [
+            'id',
+            'owner',
+            'post',
+            'text',
+            'date',
+            'parent',
+            'likes',
+            'replies',
+        ]
+
+    def get_replies(self, obj):
+        replies = obj.descendants().select_related('owner', 'parent')
+        serializer = CommentSerializer(
+            instance=replies,
+            many=True,
+            context=self.context,
+            exclude=['post']
+        )
+        return serializer.data
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if representation['parent'] is None:
+            representation.pop('parent')
+        return representation
+
+
+class BasePostSerializer(
+    TaggitSerializer,
+    CustomSerializer,
+    serializers.HyperlinkedModelSerializer,
+):
+    owner = serializers.HyperlinkedRelatedField(
+        view_name='user-detail',
+        lookup_field='slug',
+        read_only=True,
+    )
 
 
 class PostMediaSerializer(serializers.Serializer):
     file = serializers.FileField(allow_empty_file=False, use_url=False)
 
 
-class BasePostSerializer(
-    TaggitSerializer,
-    serializers.HyperlinkedModelSerializer,
-):
-    owner = serializers.HyperlinkedRelatedField(
-        view_name='user-detail',
-        lookup_url_kwarg='slug',
-        read_only=True,
-    )
-    class Meta:
-        model = Post
-        exclude = ['is_comment', 'saved']
-
-
-class PostListSerializer(BasePostSerializer):
+class PostSerializer(BasePostSerializer):
     tags = TagListSerializerField(
         write_only=True,
         child=serializers.CharField(allow_blank=True),
@@ -50,6 +75,11 @@ class PostListSerializer(BasePostSerializer):
         child=serializers.FileField(allow_empty_file=False, use_url=False),
         write_only=True,
     )
+
+    class Meta:
+        model = Post
+        exclude = ['is_comment', 'likes', 'saved', 'archived']
+        extra_kwargs = {'description': {'write_only': True}}
 
     @transaction.atomic
     def create(self, validated_data):
@@ -63,19 +93,69 @@ class PostListSerializer(BasePostSerializer):
         return post
 
 
-class PostDetailSerializer(BasePostSerializer):
-    tags = TagListSerializerField(
-        child=serializers.CharField(allow_blank=True),
-    )
+class PostUpdateSerializer(BasePostSerializer):
+    tags = TagListSerializerField(child=serializers.CharField(allow_blank=True))
     likes = serializers.IntegerField(read_only=True, source='likes_count')
+    
+    class Meta:
+        model = Post
+        exclude = ['is_comment', 'saved', 'archived']
+
+
+class PostDetailSerializer(PostUpdateSerializer):
+    files = PostMediaSerializer(
+        many=True,
+        read_only=True,
+        source='get_files',
+    )
+    comments = serializers.SerializerMethodField()
+
+    def get_comments(self, obj):
+        comments = (
+            obj.comments.with_likes().
+            filter(parent=None).
+            select_related('owner', 'parent')
+        )
+        serializer = CommentSerializer(
+            instance=comments,
+            many=True,
+            read_only=True,
+            exclude=['post'],
+        )
+        return serializer.data
+
+
+class ArchivePostsSerializer(PostSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name='archive-get-post',
+        read_only=True,
+    )
+
+
+class ArchivePostSerializer(PostDetailSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name='archive-get-post',
+        read_only=True,
+    )
 
 
 class StorySerializer(serializers.HyperlinkedModelSerializer):
-    owner = serializers.StringRelatedField(source='owner.username')
+    owner = serializers.HyperlinkedRelatedField(
+        view_name='user-detail',
+        lookup_field='slug',
+        read_only=True,
+    )
 
     class Meta:
         model = Story
         fields = ['url', 'owner', 'img', 'date']
+
+
+class ArchiveStorySerializer(StorySerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name='archive-story',
+        read_only=True,
+    )
 
 
 class TagSerializer(CustomSerializer, serializers.HyperlinkedModelSerializer):
@@ -87,10 +167,11 @@ class TagSerializer(CustomSerializer, serializers.HyperlinkedModelSerializer):
 
     def get_posts(self, obj):
         queryset = (
-            Post.objects.filter(tags__name__in=[obj.name]).
-            select_related('owner').prefetch_related('tags')
+            Post.objects.annotated().
+            filter(tags__name__in=[obj.name]).
+            exclude(archived=True)
         )
-        serializer = PostListSerializer(
+        serializer = PostSerializer(
             instance=queryset,
             many=True,
             context=self.context,

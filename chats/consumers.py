@@ -24,7 +24,7 @@ from chats.serializers import (
     PrivateChatSerializer,
     MessageSerializer,
 )
-from chats.models import Message, PrivateChat, RoomChat, MessageImages
+from chats.models import Message, PrivateChat, RoomChat, MessageImage
 
 
 User = get_user_model()
@@ -124,7 +124,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event))
 
     @database_sync_to_async
-    @transaction.atomic
     def save_message(self, url, chat_id, user, message, files):
         sender = User.objects.get(username=user)
         if url == 'room':
@@ -137,37 +136,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
             else:
                 receiver = chat.first_user
 
-        if len(message):
-            message_obj = Message.objects.create(
-                user=sender,
-                chat=chat,
-                content=message,
-            )
-        else:
-            message_obj = Message.objects.create(user=sender, chat=chat)
-
-        # decode image and save it
-        files_list = []
-        if files:
-            for file, name in files:
-                formatt, imgstr = file.split(';base64,')
-                data = ContentFile(base64.b64decode(imgstr), name=name)
-                files_list.append(
-                    MessageImages(message=message_obj, file=data)
+        with transaction.atomic():
+            if len(message):
+                message_obj = Message.objects.create(
+                    user=sender,
+                    chat=chat,
+                    content=message,
                 )
-            MessageImages.objects.bulk_create(files_list)
+            else:
+                message_obj = Message.objects.create(user=sender, chat=chat)
+
+            # decode image and save it
+            files_list = []
+            if files:
+                for file, name in files:
+                    formatt, imgstr = file.split(';base64,')
+                    data = ContentFile(base64.b64decode(imgstr), name=name)
+                    files_list.append(
+                        MessageImage(message=message_obj, file=data)
+                    )
+                MessageImage.objects.bulk_create(files_list)
 
         if message_obj.chat.__class__ == RoomChat:
             for __user in users:
                 redis_client.sadd(
-                    name=f'user:{__user.id}:room_unread',
-                    values=message_obj.id,
+                    f'user:{__user.id}:room_unread',
+                    message_obj.id,
                 )
         else:
-            redis_client.sadd(
-                name=f'user:{receiver.id}:chat_unread',
-                values=message_obj.id,
-            )
+            redis_client.sadd(f'user:{receiver.id}:chat_unread', message_obj.id)
 
     @database_sync_to_async
     def clear_messages(self, url, chat_id):

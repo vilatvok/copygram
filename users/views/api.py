@@ -1,8 +1,11 @@
 from django.db import transaction
+from django.db.models import Q
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count, Subquery, OuterRef
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
+from django.utils.decorators import method_decorator
+from django.core.cache import cache
+from django.views.decorators.cache import cache_page
 from django.contrib.auth.tokens import default_token_generator
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -14,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 
-from common.utils import get_posts, redis_client
+from common.utils import redis_client, get_blocked_users
 
 from users.serializers import (
     ActionSerializer,
@@ -25,7 +28,7 @@ from users.serializers import (
     UserPrivacySerializer,
     UserSerializer,
     PasswordSerializer,
-    ActivitySerializer,
+    UserUpdateSerializer,
 )
 from users.permissions import IsOwner
 from users.models import Action, Follower
@@ -33,13 +36,14 @@ from users.utils import (
     Recommender,
     block_user,
     follow_to_user,
+    get_user_posts,
     send_reset_email,
 )
 
-from blogs.models import PostMedia, Story
+from blogs.models import Post, Story
 from blogs.serializers import (
+    PostSerializer,
     StorySerializer,
-    PostListSerializer,
     CommentSerializer,
 )
 
@@ -63,73 +67,59 @@ class UserViewSet(ModelViewSet):
 
     def get_queryset(self):
         request = self.request
-        queryset = User.objects.annotate(
-            followers_count=Count('followers', distinct=True),
-            following_count=Count('following', distinct=True),
+        blocked_users = get_blocked_users(request.user)
+        queryset = (
+            User.objects.annotated(current_user=request.user).
+            exclude(id__in=blocked_users).
+            select_related('privacy')
         )
-        if request.user.is_authenticated:
-            queryset = queryset.exclude(id__in=request.session['blocked'])
         return queryset
 
     def get_followers_view(self, request, view_name):
         user = self.get_object()
+        qs = self.get_queryset()
         if view_name == 'followers':
-            queryset = self.get_queryset().filter(
-                following__to_user=user,
-            )
+            queryset = qs.filter(following__to_user=user)
         else:
-            queryset = self.get_queryset().filter(
-                followers__from_user=user,
-            )
+            queryset = qs.filter(followers__from_user=user)
 
         serializer = UserSerializer(
             instance=queryset,
             many=True,
             context={'request': request},
-            fields=('phone', 'last_login'),
+            exclude=['phone', 'last_login'],
         )
         return Response(serializer.data)
 
     def get_serializer_class(self):
-        if self.action in ['list', 'create']:
+        if self.action in ['create']:
             return UserCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return UserUpdateSerializer
         return UserSerializer
 
     def list(self, request):
         queryset = self.filter_queryset(self.get_queryset())
-
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(
             instance=page,
             many=True,
-            fields=['is_online', 'gender', 'bio', 'last_login'],
+            exclude=['gender', 'bio', 'last_login'],
         )
         return self.get_paginated_response(serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         user = self.get_object()
-        user_privacy = user.privacy
-        is_follower = Follower.objects.filter(
-            from_user=request.user,
-            to_user=user,
-        ).exists()
-        serializer_all = self.get_serializer(user)
-        serializer_excluded = self.get_serializer(user, fields=['is_online'])
-        if user_privacy.online_status == 'followers' and is_follower:
-            serializer = serializer_all
-        elif user_privacy.online_status == 'everyone':
-            serializer = serializer_all
-        else:
-            serializer = serializer_excluded
+        serializer = self.get_serializer(user)
         return Response(serializer.data)
 
     @action(detail=True)
     def posts(self, request, slug=None):
-        post = get_posts(user=self.get_object())
-        serializer = PostListSerializer(
+        post = get_user_posts(user=self.get_object())
+        serializer = PostSerializer(
             instance=post,
-            context={'request': request},
             many=True,
+            context={'request': request},
         )
         return Response(serializer.data)
 
@@ -137,10 +127,13 @@ class UserViewSet(ModelViewSet):
     def stories(self, request, slug=None):
         story = (
             Story.objects.filter(owner=self.get_object()).
-            exclude(owner__in=request.session['blocked']).
             select_related('owner')
         )
-        serializer = StorySerializer(story, many=True, context={'request': request})
+        serializer = StorySerializer(
+            instance=story,
+            many=True,
+            context={'request': request},
+        )
         return Response(serializer.data)
 
     @action(detail=True)
@@ -209,24 +202,35 @@ class SettingsAPIView(APIView):
 class ActivityViewSet(ViewSet):
     def list(self, request):
         user = self.request.user
-        subquery = PostMedia.objects.filter(
-            post=OuterRef('pk'),
-        ).values('file')[:1]
-        posts = user.likes.annotate(
-            file=Subquery(subquery),
-        ).select_related('owner').prefetch_related('tags')
+        key = 'my_posts'
+        posts = cache.get(key)
+        if posts is None:
+            posts = (
+                Post.objects.annotated().
+                exclude(archived=True).filter(likes=user)
+            )
+            cache.set(key, posts, 60 * 10)
 
-        serializer = ActivitySerializer(
+        serializer = PostSerializer(
             instance=posts,
             many=True,
             context={'request': request},
         )
-        comments = user.comment_owner.all()
+
+        key = 'my_comments'
+        comments = cache.get(key)
+        if comments is None:
+            comments = (
+                user.comments.exclude(post__archived=True).
+                select_related('post', 'owner')
+            )
+            cache.set(key, comments, 60 * 10)
+
         comments_serializer = CommentSerializer(
             instance=comments,
             many=True,
             context={'request': request},
-            fields=['text', 'date'],
+            exclude=['text', 'owner', 'replies'],
         )
         response_data = {}
         response_data['liked_posts'] = serializer.data
@@ -243,9 +247,10 @@ class ActionViewSet(
 
     def get_queryset(self):
         user = self.request.user
-        actions = Action.objects.filter(
-            Q(post__owner=user) | Q(user=user),
-        ).select_related('owner', 'content_type')
+        actions = (
+            Action.objects.filter(Q(post__owner=user) | Q(user=user)).
+            select_related('owner', 'content_type')
+        )
         return actions
 
 
@@ -253,16 +258,25 @@ class SavedPostsViewSet(
     mixins.ListModelMixin,
     GenericViewSet,
 ):
-    serializer_class = PostListSerializer
+    serializer_class = PostSerializer
 
     def get_queryset(self):
-        subquery = PostMedia.objects.filter(
-            post=OuterRef('pk')
-        ).values('file')[:1]
-        posts = self.request.user.saved.annotate(
-            file=Subquery(subquery),
-        ).select_related('owner').prefetch_related('tags')
+        user = self.request.user
+        posts = (
+            Post.objects.annotated().
+            exclude(archived=True).filter(saved=user)
+        )
         return posts
+
+    def list(self, request, *args, **kwargs):
+        key = 'saved_posts'
+        posts = cache.get(key)
+        if posts is None:
+            posts = self.get_queryset()
+            cache.set(key, posts)
+
+        serializer = self.get_serializer(instance=posts, many=True)
+        return Response(serializer.data)
 
 
 class BlockedUsersViewSet(
@@ -272,18 +286,14 @@ class BlockedUsersViewSet(
     serializer_class = UserSerializer
 
     def get_queryset(self):
-        block = User.objects.filter(
-            blocked_by__block_from=self.request.user,
-        )
-        return block
+        user = self.request.user
+        queryset = User.objects.blocked(user=user)
+        return queryset
 
+    @method_decorator(cache_page(60 * 60))
     def list(self, request):
-        serializer = self.get_serializer(
-            instance=self.queryset,
-            many=True,
-            context={'request': request},
-            fields=('phone', 'username', 'last_login'),
-        )
+        blocked = self.get_queryset()
+        serializer = self.get_serializer(blocked, many=True)
         return Response(serializer.data)
 
 
@@ -299,11 +309,13 @@ class RecommendationViewSet(
         return recommendations
     
     def list(self, request):
-        serializer = self.get_serializer(
-            instance=self.queryset,
-            many=True,
-            context={'request': request},
-        )
+        key = 'recommendations'
+        recommendations = cache.get(key)
+        if recommendations is None:
+            recommendations = self.get_queryset()
+            cache.set(key, recommendations)
+
+        serializer = self.get_serializer(recommendations, many=True)
         return Response(serializer.data)
 
 
@@ -316,15 +328,16 @@ class AcceptFollowerAPIView(APIView):
         if str(from_user.id) not in request_exists:
             msg = f'There is no request from {from_user.username}'
             return Response({'status': msg}, status.HTTP_404_NOT_FOUND)
-        with transaction.atomic():
-            Follower.objects.create(from_user=from_user, to_user=to_user)
-            Action.objects.filter(
-                owner=from_user,
-                user=to_user,
-                act='wants to follow to you',
-            ).delete()
-        redis_client.srem(key, from_user.id)
-        return Response({'status': 'Followed'}, status.HTTP_201_CREATED)
+        else:
+            with transaction.atomic():
+                Follower.objects.create(from_user=from_user, to_user=to_user)
+                Action.objects.filter(
+                    owner=from_user,
+                    user=to_user,
+                    act='wants to follow to you',
+                ).delete()
+            redis_client.srem(key, from_user.id)
+            return Response({'status': 'Followed'}, status.HTTP_201_CREATED)
 
 
 class RejectFollowerAPIView(APIView):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.contrib import admin
 
-from .models import RoomChat, PrivateChat, Message, MessageImages
+from .models import RoomChat, PrivateChat, Message, MessageImage
 
 
 @admin.register(RoomChat)
@@ -27,10 +27,10 @@ class MessageAdmin(admin.ModelAdmin):
         'content_type',
         'object_id',
     )
-    list_filter = ('user', 'timestamp', 'content_type')
+    list_filter = ('user', 'timestamp')
 
 
-@admin.register(MessageImages)
-class MessageImagesAdmin(admin.ModelAdmin):
+@admin.register(MessageImage)
+class MessageImageAdmin(admin.ModelAdmin):
     list_display = ('id', 'message', 'file')
     list_filter = ('message',)

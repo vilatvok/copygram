@@ -1,78 +1,53 @@
 from django.db.models import Q
 
-from rest_framework import mixins
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.viewsets import ModelViewSet, GenericViewSet
+from rest_framework.viewsets import ModelViewSet
 
+from common.utils import NonUpdateViewSet
+
+from chats.mixins import ChatAPIMixin
 from chats.permissions import IsRoomOwner, IsPrivateMember
 from chats.models import RoomChat, PrivateChat
 from chats.serializers import (
-    MessageSerializer,
-    RoomChatSerializer,
     PrivateChatSerializer,
+    PrivateChatsSerializer,
+    RoomChatSerializer,
+    RoomChatsSerializer,
 )
 
 
-class RoomChatViewSet(ModelViewSet):
-    serializer_class = RoomChatSerializer
+class RoomChatViewSet(ChatAPIMixin, ModelViewSet):
     permission_classes = [IsAuthenticated, IsRoomOwner]
 
     def get_queryset(self):
-        return (
-            RoomChat.objects.filter(users__in=[self.request.user]).
-            select_related('owner')
+        rooms = (
+            RoomChat.objects.annotated().
+            filter(users__in=[self.request.user]).
+            select_related('owner').prefetch_related('users')
         )
+        return rooms
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['user_id'] = self.request.user.id
-        return context
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return RoomChatsSerializer
+        return RoomChatSerializer
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    def retrieve(self, request):
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance,
-            fields=['id', 'owner'],
-        )
-        messages = (
-            instance.messages.all().
-            select_related('user', 'content_type').prefetch_related('files')
-        )
-        messages_serializer = MessageSerializer(messages, many=True)
-        result = {**serializer.data, 'messages': messages_serializer.data}
-        return Response(result)
 
-
-class PrivateChatViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    GenericViewSet,
-):
-    serializer_class = PrivateChatSerializer
+class PrivateChatViewSet(ChatAPIMixin, NonUpdateViewSet):
     permission_classes = [IsAuthenticated, IsPrivateMember]
 
     def get_queryset(self):
-        return PrivateChat.objects.filter(
-            Q(first_user=self.request.user) | Q(second_user=self.request.user)
+        user = self.request.user
+        chats = PrivateChat.objects.annotated().filter(
+            Q(first_user=user) |
+            Q(second_user=user),
         ).select_related('first_user', 'second_user')
+        return chats
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['user_id'] = self.request.user.id
-        return context
-
-    def retrieve(self, request):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, fields=['id',])
-        messages = instance.messages.select_related(
-            'user', 'content_type',
-        ).prefetch_related('files')
-        messages_serializer = MessageSerializer(messages, many=True)
-        result = {**serializer.data, 'messages': messages_serializer.data}
-        return Response(result)
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return PrivateChatsSerializer
+        return PrivateChatSerializer

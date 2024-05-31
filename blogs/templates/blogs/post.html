@@ -95,16 +95,20 @@
                   href="{% url 'blogs:edit_post' post.id %}" 
                   role="button">Edit</a>
             </form>
+            <form action="{% url 'blogs:archive_post' post.id %}" method="post">
+               {% csrf_token %}
+               <button class="btn btn-success">Archive</button>
+            </form>
          {% endif %}
          <p class="card-text mt-2"><small class="text-muted">{{ post.date }}</small></p>
       </div>
    </div>
    {% if show_comments %}
-      <div class="row d-flex justify-content-left mt-5">
-         <div class="col-md-8 col-lg-6">
-            <div class="card shadow-0 border" 
-               style="background-color: #f0f2f5; border-radius: 20px; overflow: hidden;">
-               <div class="card-body p-4">
+      <div class="row d-flex justify-content-start mt-4">
+         <div class="col-md-12 col-lg-10 col-xl-6">
+            <div class="card" style="border-radius: 20px; overflow: hidden;">
+               <div class="card-body p-4 bg-dark">
+                  <h4 class="text-center mb-4 pb-2 text-light">Comments</h4>
                   <form action="{% url 'blogs:add_comment' post.id %}" method="post">
                      {% csrf_token %}
                      <div class="form-outline mb-4">
@@ -114,33 +118,48 @@
                         <button class="btn btn-success mt-2">Send</button>
                      </div>
                   </form>
-                  {% for comment in comments %}
-                     <div class="card mb-4">
-                        <div class="card-body">
-                           <p>{{ comment.text }}</p>
-                           <div class="d-flex justify-content-between">
-                              <div class="d-flex flex-row align-items-center">
-                                 <img src="{{ comment.owner.avatar.url }}" alt="avatar" width="25"
-                                    height="25" />
-                                 <p>{{ comment.owner }}</p>
-                              </div>
-                              <div class="d-flex flex-row align-items-center">
-                                 <p class="small text-muted mb-0">{{ comment.date }}</p>
+                  <div class="row">
+                     <div class="col">
+                        {% for comment in comments %}
+                           {% if comment.tree_depth == 0 %}
+                              <div class="d-flex flex-start comment-frame-{{ comment.id }}">
+                           {% else %}
+                              <div class="d-flex flex-start ms-5 comment-frame-{{ comment.id }}">
+                           {% endif %}
+                           {% if comment.owner.avatar %}
+                              <img class="rounded-circle shadow-1-strong me-3"
+                                 src="{{ comment.owner.avatar.url }}" alt="avatar" width="65"
+                                 height="65" />
+                           {% else %}
+                              <img class="rounded-circle shadow-1-strong me-3"
+                                 src="{% static 'users/img/user.png' %}" alt="avatar" width="65"
+                                 height="65" />
+                           {% endif %}
+                              <div class="flex-grow-1 flex-shrink-1">
+                                 <div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                       <p class="mb-1 text-light">
+                                          {{ comment.owner.username }} <span class="small text-muted">
+                                             {{ comment.date }}</span>
+                                       </p>
+                                    </div>
+                                    <p class="small mb-0 text-light">{{ comment.text }}</p>
+                                 </div>
+                                 {% if comment.owner == request.user or post.owner == request.user %}
+                                    <button id="comment-{{ comment.id }}" 
+                                       type="button" 
+                                       class="btn btn-success delete-comment">Delete
+                                    </button>
+                                 {% endif %}
                               </div>
                            </div>
-                           {% if comment.owner == request.user or post.owner == request.user %}
-                              <button id="comment-{{ comment.id }}" 
-                                 type="button" 
-                                 class="btn btn-success delete-comment">Delete
-                              </button>
-                           {% endif %}
-                        </div>
+                        {% empty %}
+                           <div class="alert alert-info" role="alert">
+                              There is no any comment.
+                           </div>
+                        {% endfor %}
                      </div>
-                  {% empty %}
-                     <div class="alert alert-info" role="alert">
-                        There is no any comment.
-                     </div>
-                  {% endfor %}
+                  </div>
                </div>
             </div>
          </div>
@@ -153,7 +172,7 @@
    <script>
       const like_url = "{% url 'blogs:add_like' post.id %}"
       const save_url = "{% url 'blogs:save_post' post.id %}"
-      const comment_url = "{% url 'blogs:delete_comment' post.id 0 %}"
+      const post_id = "{{ post.id }}"
    </script>
    <script src="{% static 'blogs/js/post.js' %}"></script>
 {% endblock jscontent %}
