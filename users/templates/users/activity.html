@@ -36,7 +36,7 @@
    {% if data.comments %}
       <div class="list-group d-inline-flex p-2">
          {% for comment in data.comments %}
-            <a href="{% url 'blogs:post' comment.post.id %}" 
+            <a href="{{ comment.post.get_absolute_url }}" 
                class="list-group-item list-group-item-action bg-dark text-light">
                {{ comment.text }}
             </a>

@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
          const user_ = button.getAttribute('id')
          const split = user_.split('-')
          const user_slug = split[1]
-         const followersElement = document.querySelector(`[id="${user_slug}"]`);
+         const followersElement = document.querySelector(`[id="followers-${user_slug}"]`);
          const options = {
             method: 'POST',
             headers: {'X-CSRFToken': csrftoken},

@@ -12,7 +12,7 @@
                <div class="card-body p-4">
                   <div class="d-flex text-black">
                      <div class="flex-shrink-0">
-                        <a href="{% url 'users:profile' user.slug %}">
+                        <a href="{{ user.get_absolute_url }}">
                            {% if user.avatar %}
                               <img src="{{ user.avatar.url }}"
                                  alt="Generic placeholder image" class="img-fluid"

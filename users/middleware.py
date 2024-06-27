@@ -12,7 +12,6 @@ class LoginRequiredMiddleware:
     def __call__(self, request):
         allowed_paths = [
             reverse(settings.LOGIN_URL),
-            reverse('users:register'),
             reverse('blogs:posts'),
         ]
 
@@ -20,6 +19,9 @@ class LoginRequiredMiddleware:
             request.path.startswith('/api'),
             request.path.startswith('/social'),
             request.path.startswith('/password'),
+            request.path.startswith('/register'),
+            request.path.startswith('/swagger'),
+            request.path.startswith('/redoc'),
             request.path.startswith(settings.MEDIA_URL),
         ]
 

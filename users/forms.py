@@ -1,11 +1,7 @@
 from django import forms
-from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 
-from users.models import Report, UserPrivacy
-
-
-User = get_user_model()
+from users.models import Report, UserPrivacy, User
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -44,7 +40,7 @@ class CustomPasswordResetForm(forms.Form):
     def clean_email(self):
         email = self.cleaned_data['email']
         if not User.objects.filter(email=email).exists():
-            raise forms.ValidationError('User not found')
+            raise forms.ValidationError('User is not found')
         return email
 
 

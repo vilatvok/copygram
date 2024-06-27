@@ -190,7 +190,7 @@
                            alt="Generic placeholder image" class="img-fluid"
                            style="width: 100px; border-radius: 20px;">
                      {% endif %}
-                     <a href="{% url 'users:profile' s.slug %}">{{ s.username }}</a>
+                     <a href="{{ s.get_absolute_url }}">{{ s.username }}</a>
                      <div class="d-flex pt-1">
                         <button id="follow-{{ s.slug }}" type="button" 
                            class="btn btn-success me-1 flex-grow-1 follow-recomendation">

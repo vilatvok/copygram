@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% load bootstrap5 %}
+
+{% block title %}Register confirm{% endblock title %}
+
+{% block content %}
+    {% for message in messages %}
+        <div class="alert alert-info" role="alert">{{ message }}</div>
+    {% endfor %}
+    <a class="btn btn-success" href="{% url 'users:login' %}">Go to login page</a>
+{% endblock content %}

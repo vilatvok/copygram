@@ -9,12 +9,13 @@ from users.models import (
     Report,
     User,
     UserPrivacy,
+    Referral
 )
 
 
 @admin.register(User)
-class UserAdmin(UserAdmin):
-    list_display = ['id', 'username', 'email', 'is_superuser']
+class UserAdmink(UserAdmin):
+    list_display = ['id', 'username', 'email', 'is_superuser', 'referral_code']
     fieldsets = (
         (None, {'fields': ('slug', 'username', 'password')}),
         (
@@ -43,20 +44,34 @@ class UserAdmin(UserAdmin):
         (
             ('Important dates'),
             {'fields': (
-                'last_login',
                 'date_joined',
+                'last_login',
                 'last_activity',
+                'last_name_change',
                 'is_online',
             )}
+        ),
+    )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("slug", "username", "email", "password1", "password2"),
+            },
         ),
     )
     prepopulated_fields = {'slug': ['username']}
 
 
+@admin.register(Referral)
+class ReferralAdmin(admin.ModelAdmin):
+    list_display = ('id', 'referrer', 'referred_by', 'date_joined')
+
+
 @admin.register(Archive)
 class ArchiveAdmin(admin.ModelAdmin):
     list_display = ('id', 'target')
-    list_filter = ('target',)
 
 
 @admin.register(Action)

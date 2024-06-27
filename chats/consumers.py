@@ -2,7 +2,6 @@ import base64
 import json
 
 from django.db import transaction
-from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 
 from channels.db import database_sync_to_async
@@ -19,15 +18,14 @@ from djangochannelsrestframework.observer.generics import (
 
 from common.utils import redis_client
 
-from chats.serializers import (
+from chats.api.serializers import (
     RoomChatSerializer,
     PrivateChatSerializer,
     MessageSerializer,
 )
 from chats.models import Message, PrivateChat, RoomChat, MessageImage
 
-
-User = get_user_model()
+from users.models import User
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -150,7 +148,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             files_list = []
             if files:
                 for file, name in files:
-                    formatt, imgstr = file.split(';base64,')
+                    _, imgstr = file.split(';base64,')
                     data = ContentFile(base64.b64decode(imgstr), name=name)
                     files_list.append(
                         MessageImage(message=message_obj, file=data)

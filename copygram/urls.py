@@ -24,14 +24,15 @@ from rest_framework.routers import DefaultRouter
 from two_factor.urls import urlpatterns as tf_urls
 
 from copygram.yasg import urlpatterns as doc
-from users.views import api as users_api
-from blogs.views import api as blogs_api
-from chats.views import api as chats_api
+from users.api import views as users_api
+from blogs.api import views as blogs_api
+from chats.api import views as chats_api
 
 
 r = DefaultRouter()
 r.register(r'tags', blogs_api.TagViewSet, 'tag')
 r.register(r'users', users_api.UserViewSet, 'user')
+r.register(r'referrals', users_api.ReferralViewSet, 'referral')
 r.register(r'posts', blogs_api.PostViewSet, 'post')
 r.register(r'stories', blogs_api.StoryViewSet, 'story')
 r.register(r'rooms', chats_api.RoomChatViewSet, 'room')
@@ -62,6 +63,6 @@ urlpatterns += doc
 
 if settings.DEBUG:
     urlpatterns += static(
-        settings.MEDIA_URL,
+        prefix=settings.MEDIA_URL,
         document_root=settings.MEDIA_ROOT,
     )

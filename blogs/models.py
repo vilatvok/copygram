@@ -1,22 +1,20 @@
 from django.utils import timezone
-from django.db import models
+from django.db import models, transaction
 from django.urls import reverse
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.contenttypes.models import ContentType
 
 from tree_queries.models import TreeNode
 
 from taggit.managers import TaggableManager
 
 from blogs.managers import CommentQuerySet, PostManager
-from users.models import Action, Archive
 
-
-User = get_user_model()
+from users.models import Action, Archive, User
 
 
 class Base(models.Model):
-    """Abstract model. Is used for other models."""
+    """Abstract model."""
     owner = models.ForeignKey(
         to=User,
         related_name='%(class)ss',
@@ -29,7 +27,26 @@ class Base(models.Model):
         ordering = ['-date']
 
 
-class Post(Base):
+class BaseMedia(Base):
+    class Meta:
+        abstract = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__archived = self.archived
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.__archived != self.archived:
+            target_ct = ContentType.objects.get_for_model(self)
+            if self.archived == True: 
+                Archive.objects.create(content_type=target_ct, object_id=self.id)
+            else:
+                obj = Archive.objects.get(content_type=target_ct, object_id=self.id)
+                obj.delete()
+
+
+class Post(BaseMedia):
     description = models.TextField(blank=True)
     likes = models.ManyToManyField(User, related_name='likes', blank=True)
     saved = models.ManyToManyField(User, related_name='saved', blank=True)
@@ -41,11 +58,12 @@ class Post(Base):
 
     objects = PostManager()
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         if not self.pk:
             self.owner.last_activity = timezone.now()
             self.owner.save()
-        return super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse('blogs:post', kwargs={'post_id': self.pk})
@@ -57,6 +75,20 @@ class Post(Base):
         return self.tags.all()
 
 
+class Story(BaseMedia):
+    img = models.ImageField(upload_to='stories/%Y/%m/%d/')
+    archived = models.BooleanField(default=False)
+    archived_stories = GenericRelation(Archive, related_query_name='story')
+
+    class Meta:
+        verbose_name_plural = 'Stories'
+    
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        return super().save(*args, **kwargs)
+
+
+# Post -> PostMedia
 class PostMedia(models.Model):
     post = models.ForeignKey(
         to=Post,
@@ -69,6 +101,7 @@ class PostMedia(models.Model):
         verbose_name_plural = 'Posts media'
 
 
+# Post -> Comment
 class Comment(TreeNode):
     owner = models.ForeignKey(
         to=User,
@@ -105,12 +138,3 @@ class Comment(TreeNode):
             return f'Comment to ({self.post.id})->{self.parent.id}->{self.id}'
         else:
             return f'Comment to ({self.post.id})->{self.id}' 
-
-
-class Story(Base):
-    img = models.ImageField(upload_to='stories/%Y/%m/%d/')
-    archived = models.BooleanField(default=False)
-    archived_stories = GenericRelation(Archive, related_query_name='story')
-
-    class Meta:
-        verbose_name_plural = 'Stories'

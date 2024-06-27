@@ -5,6 +5,26 @@
 {% block title %}Posts{% endblock title %}
 
 {% block content %}
+   <div class="accordion accordion mb-4" id="accordionFlushExample">
+      <div class="accordion-item bg-dark">
+         <h2 class="accordion-header">
+            <button class="accordion-button collapsed bg-dark text-light" type="button" 
+               data-bs-toggle="collapse" data-bs-target="#flush-collapseOne" 
+               aria-expanded="false" aria-controls="flush-collapseOne">
+               Filters
+            </button>
+         </h2>
+         {% if form %}
+            <form action="{% url 'blogs:posts' %}">
+               <div id="flush-collapseOne" class="accordion-collapse collapse" 
+                     data-bs-parent="#accordionFlushExample">
+                  <div class="accordion-body text-light">{{ form.as_p }}</div>
+                  <input type="submit" class="btn btn-success ms-3 mb-3">
+               </div>
+            </form>
+         {% endif %}
+      </div>
+   </div>
    {% if posts %}
       <div class="row row-cols-1 row-cols-md-5 g-4">
          {% for post in posts %}
@@ -27,7 +47,7 @@
                   <div class="card-body bg-dark">
                      {% with owner=post.owner %}
                         <p class="card-text">
-                           <a href="{% url 'users:profile' owner.slug %}">{{ owner.username }}</a>
+                           <a href="{{ owner.get_absolute_url }}">{{ owner.username }}</a>
                         </p>
                      {% endwith %}
                      </p>
@@ -39,6 +59,25 @@
             </div>
          {% endfor %}
       </div>
+      <nav aria-label="Page navigation example">
+         <ul class="pagination">
+            {% if page_obj.has_previous %}
+               <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+               </li>
+            {% endif %}
+            {% for p in page_obj.paginator.page_range %}
+               <li class="page-item">
+                  <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+               </li>
+            {% endfor %}
+            {% if page_obj.has_next %}
+               <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+               </li>
+            {% endif %}
+         </ul>
+      </nav>
    {% else %}
       <div class="alert alert-info" role="alert">
          There is no any post.

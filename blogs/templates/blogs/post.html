@@ -46,7 +46,7 @@
       <div class="card-body bg-dark">
          <p class="card-text text-light">
             <a class="link-underline link-underline-opacity-0" 
-               href="{% url 'users:profile' post.owner.slug %}" >
+               href="{{ post.owner.get_absolute_url }}" >
                {{ post.owner }}
             </a>
             {% if post.description %}:{% endif %} {{ post.description }}

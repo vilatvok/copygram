@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import (
     GenericForeignKey,
     GenericRelation,
@@ -8,8 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from chats.managers import ChatManager
 
-
-User = get_user_model()
+from users.models import User
 
 
 class RoomChat(models.Model):

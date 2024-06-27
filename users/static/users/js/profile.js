@@ -16,11 +16,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
             switch (data.status) {
                case 'Followed':
                   follow_btn.innerHTML = 'Unfollow'
-                  followersElement.innerHTML = total + 1 +  ''
+                  followers_count.innerHTML = total + 1 + ' '
                   break;
                case 'Unfollowed':
                   follow_btn.innerHTML = 'Follow'
-                  followersElement.innerHTML = total - 1 + ' '
+                  followers_count.innerHTML = total - 1 + ' '
                   break;
                case 'Request was sent':
                   follow_btn.innerHTML = 'Cancel'

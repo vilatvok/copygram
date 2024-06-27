@@ -1,9 +1,9 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Case, When, Value, BooleanField
 from django.core.cache import cache
 
+from common.utils import create_action, get_blocked_users, redis_client
 from blogs.models import Post, Story
-from common.utils import create_action, get_blocked_users
 from users.models import Archive
 
 
@@ -33,14 +33,29 @@ def save_post(user, post):
     return status
 
 
-def get_posts(user):
-    blocked_users = get_blocked_users(user)
-    queryset = (
+def get_posts(user=None):
+    vip_users = redis_client.smembers('active_vip_users')
+    
+    posts = (
         Post.objects.annotated().
-        exclude(Q(owner__in=blocked_users) |Q(archived=True)).
-        select_related('owner').prefetch_related('tags')
+        annotate(
+            is_vip=Case(
+                When(owner_id__in=vip_users, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            )
+        ).
+        exclude(archived=True).
+        select_related('owner').
+        prefetch_related('tags').
+        order_by('-is_vip', '?')
     )
-    return queryset
+
+    if user:
+        blocked_users = get_blocked_users(user)
+        posts = posts.exclude(owner__in=blocked_users)
+
+    return posts
 
 
 def get_archived_posts(user):

@@ -33,6 +33,7 @@ class PostAdmin(admin.ModelAdmin):
     autocomplete_fields = ('owner',)
     actions = ('commments_on', 'comments_off')
     inlines = (PostMediaInline, CommentInline)
+    list_per_page = 20
 
     @admin.action(description='Comments on')
     def comments_on(self, request, queryset):
@@ -53,6 +54,7 @@ class PostMediaAdmin(admin.ModelAdmin):
 
     file_tag.short_description = 'File'
 
+    list_per_page = 10
     list_display = ('id', 'post', 'file_tag')
     list_filter = ('post',)
 
@@ -63,7 +65,7 @@ class CommentAdmin(admin.ModelAdmin):
     list_filter = ('owner', 'date', 'post')
     autocomplete_fields = ('owner', 'post')
     search_fields = ('text',)
-    list_per_page = 30
+    list_per_page = 20
     list_max_show_all = 100
 
 

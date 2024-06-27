@@ -19,6 +19,11 @@
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                <ul class="navbar-nav mr-auto">
                   {% if user.is_authenticated %}
+                     {% if user.is_superuser and user.is_staff %}
+                        <li class="nav-item">
+                           <a class="nav-link" href="{% url 'admin:index' %}">Control</a>
+                        </li>
+                     {% endif %}
                      <li class="nav-item dropdown">
                         {% with user=request.user %}
                            <a class="nav-link dropdown-toggle" href="#" 
@@ -27,11 +32,11 @@
                            <ul class="dropdown-menu">
                               <li>
                                  <a class="dropdown-item" 
-                                    href="{% url 'users:profile' user.slug %}">Profile</a>
+                                    href="{{ user.get_absolute_url }}">Profile</a>
                               </li>
                               <li>
                                  <a class="dropdown-item" 
-                                    href="{% url 'users:logout_user' %}">Logout</a>
+                                    href="{% url 'users:logout' %}">Logout</a>
                               </li>
                               <li>
                                  <a class="dropdown-item" 
@@ -83,10 +88,13 @@
                      </li>
                   {% else %}
                      <li class="nav-item">
-                        <a class="nav-link" href="{% url 'users:login_user' %}">Login</a>
+                        <a class="nav-link" href="{% url 'users:login' %}">Login</a>
                      </li>
                      <li class="nav-item">
                         <a class="nav-link" href="{% url 'users:register' %}">Register</a>
+                     </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:admin_register' %}">Admin Register</a>
                      </li>
                   {% endif %}
                </ul>

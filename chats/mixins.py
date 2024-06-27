@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from common.utils import redis_client
 
-from chats.serializers import MessageSerializer
+from chats.api.serializers import MessageSerializer
 
 
 class ChatMixin(DetailView):

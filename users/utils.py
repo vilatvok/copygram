@@ -1,28 +1,25 @@
 from django.db import transaction
 from django.db.models import Q
 from django.core.mail import send_mail
-from django.utils.encoding import force_bytes
-from django.contrib.auth import get_user_model
-from django.utils.http import urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 
 from common.utils import create_action, redis_client
 
-from users.models import Action, Follower, Block
+from users.models import User, Action, Follower, Block
 
 from blogs.models import Comment, Post
-
-
-User = get_user_model()
 
 
 class Recommender:
     """
     Recommendations for user.
     Based on user's followers.
+    Needs improvement.
     """
-
-    def get_key(self, user):
+    @staticmethod
+    def get_key(user):
         return f'user:{user.id}:recommendations'
 
     def add_suggestions(self, user, others):
@@ -42,7 +39,10 @@ class Recommender:
     def suggests_for_user(self, user):
         users = redis_client.smembers(self.get_key(user))
         suggestions = [int(user_id) for user_id in users]
-        suggestions_users = User.objects.filter(id__in=suggestions)
+        suggestions_users = (
+            User.objects.filter(id__in=suggestions).
+            select_related('privacy')
+        )
         return suggestions_users
 
 
@@ -54,18 +54,41 @@ def get_user_posts(user):
     return posts
 
 
-def send_reset_email(user, link):
-    uid = urlsafe_base64_encode(force_bytes(user))
+def send_reset_email(user, link, ref=None):
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
+    if 'register' in link:
+        subject = 'Confirm registration'
+        if ref:
+            message = (
+                'Click here to confirm registration:\n'
+                f'{link}/{uidb64}/{token}/?ref={ref}'
+            )
+        else:
+            message = (
+                'Click here to confirm registration:\n'
+                f'{link}/{uidb64}/{token}/'
+            )  
+    else:
+        subject = 'Reset password'
+        message = (
+            'Click here to reset password:\n'
+            f'{link}/{uidb64}/{token}/'
+        )
+
     send_mail(
-        subject='Password reset',
-        message=(
-            'Click here to reset your password:\n'
-            f'{link}/{uid}/{token}/'
-        ),
+        subject=subject,
+        message=message,
         from_email='kvydyk@gmail.com',
         recipient_list=[user.email],
     )
+
+
+def check_token(uidb64, token):
+    uid = force_str(urlsafe_base64_decode(uidb64))
+    user = User.objects.get(pk=uid)
+    is_valid = default_token_generator.check_token(user, token)
+    return (user, is_valid)
 
 
 def follow_to_user(from_user, to_user):
@@ -82,7 +105,6 @@ def follow_to_user(from_user, to_user):
 
     if is_followed.exists():
         is_followed.delete()
-        recommender.add_suggestions(from_user, [to_user])
         recommender.remove_suggestions(from_user, others)
         return 'Unfollowed'
     else:
@@ -109,7 +131,7 @@ def follow_to_user(from_user, to_user):
             return 'Followed'
 
 
-def block_user(request, from_user, to_user):
+def block_user(from_user, to_user):
     is_blocked = Block.objects.filter(block_from=from_user, block_to=to_user)
     if is_blocked.exists():
         is_blocked.delete()

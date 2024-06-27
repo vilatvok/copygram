@@ -1,16 +1,15 @@
 from redis import Redis
 
+from datetime import timedelta
+
 from django.utils import timezone
 from django.core.cache import cache
 from django.contrib.contenttypes.models import ContentType
 
 from rest_framework import mixins
 from rest_framework.viewsets import GenericViewSet
-
 from rest_framework.fields import empty
 from rest_framework.serializers import BaseSerializer
-
-from datetime import timedelta
 
 from users.models import Action
 
@@ -76,6 +75,28 @@ def set_serializer_fields(fields, old_fields):
         old_fields.pop(field)
 
 
+def cache_queryset(name, timeout=5):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            objs = cache.get(name)
+            if objs is None:
+                objs = func(*args, **kwargs)
+                cache.set(name, objs, timeout)
+            return objs
+        return wrapper
+    return decorator
+
+
+def get_user_ip(request):
+    req_headers = request.META
+    x_forwarded_for = req_headers.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip_addr = x_forwarded_for.split(',')[-1].strip()
+    else:
+        ip_addr = req_headers.get('REMOTE_ADDR')
+    return ip_addr
+
+
 class CustomSerializer(BaseSerializer):
     def __init__(self, instance=None, data=empty, **kwargs):
         fields = kwargs.pop('exclude', None)
@@ -84,11 +105,9 @@ class CustomSerializer(BaseSerializer):
             set_serializer_fields(fields, self.fields)
 
 
-class NonUpdateViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    GenericViewSet,
-):
+class NonUpdateViewSet(mixins.ListModelMixin,
+                        mixins.RetrieveModelMixin,
+                        mixins.CreateModelMixin,
+                        mixins.DestroyModelMixin,
+                        GenericViewSet):
     pass

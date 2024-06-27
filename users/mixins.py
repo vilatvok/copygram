@@ -1,5 +1,8 @@
 from django.views.generic.list import ListView
 
+from rest_framework import mixins
+from rest_framework.viewsets import GenericViewSet
+
 from common.utils import redis_client, get_blocked_users
 
 from users.models import User
@@ -33,3 +36,7 @@ class FollowersMixin(ListView):
 
         context['user_requests'] = requests
         return context
+
+
+class ListModelViewSet(mixins.ListModelMixin, GenericViewSet):
+    pass
