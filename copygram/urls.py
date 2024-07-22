@@ -22,8 +22,12 @@ from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 
 from two_factor.urls import urlpatterns as tf_urls
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 
-from copygram.yasg import urlpatterns as doc
 from users.api import views as users_api
 from blogs.api import views as blogs_api
 from chats.api import views as chats_api
@@ -50,16 +54,17 @@ urlpatterns = [
     path('auth/', include('rest_framework.urls')),
     path('__debug__/', include('debug_toolbar.urls')),
     path('social-auth/', include('social_django.urls', namespace='social')),
-    path('two/', include(tf_urls)),
+    path('two-factor/', include(tf_urls)),
 
     path('api/', include(r.urls)),
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('', include('users.urls')),
     path('', include('chats.urls')),
     path('', include('blogs.urls', namespace='blogs')),
 
 ]
-
-urlpatterns += doc
 
 if settings.DEBUG:
     urlpatterns += static(

@@ -9,7 +9,7 @@ This project is a clone of the popular social media platform Instagram. It allow
 - **PostgreSQL:** Main database.
 - **Redis:** Cache and secondary database.
 - **Celery:** Asynchronous tasks.
-- **Daphne:** Real-time communication.
+- **Django Channels:** Real-time communication.
 - **Swagger:** API documentation.
 - **Docker:** Containerization.
 

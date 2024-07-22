@@ -4,7 +4,9 @@ services:
     container_name: copygram
     image: web
     restart: unless-stopped
-    command: python manage.py runserver 0.0.0.0:8000
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", 
+              "copygram.asgi:application", "--bind", "0.0.0.0:8000",
+              "--reload"]
     networks:
       - my_network
     volumes:
@@ -63,6 +65,21 @@ services:
       - .env
     depends_on:
       - celery_worker
+
+  nginx:
+    image: nginx:1.25
+    container_name: nginx
+    restart: always
+    networks:
+      - my_network
+    volumes:
+      - ./nginx:/etc/nginx/templates
+      - .:/app
+    ports:
+      - "8080:80"
+      - "443:443"
+    depends_on:
+      - "web"
 
 networks:
   my_network:

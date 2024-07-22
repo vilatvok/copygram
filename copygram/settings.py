@@ -31,7 +31,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 DEBUG = os.environ.get('DEBUG')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*'] 
+
+CSRF_TRUSTED_ORIGINS = ['https://copygram.com', 'http://copygram.com:8080']
 
 # Security
 if not DEBUG:
@@ -42,23 +44,19 @@ if not DEBUG:
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+
 INTERNAL_IPS = [ip[:-1] + '1' for ip in ips] + ['0.0.0.0']
 
 # Application definition
 
 INSTALLED_APPS = [
-    'daphne',
-    'blogs',
-    'users',
-    'chats',
-
+    'drf_spectacular',
     'bootstrap5',
     'taggit',
     'debug_toolbar',
     'rest_framework',
     'social_django',
     'rest_framework_simplejwt',
-    'drf_yasg',
     'django_otp',
     'django_otp.plugins.otp_static',
     'django_otp.plugins.otp_totp',
@@ -75,6 +73,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+
+    'blogs',
+    'users',
+    'chats',
 ]
 
 MIDDLEWARE = [
@@ -110,8 +112,17 @@ REST_FRAMEWORK = {
         'anon': '50/hour',
         'user': '100/hour'
     },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Copygram',
+    'DESCRIPTION': 'This project is a clone of the popular social media platform Instagram. It allows users to manage accounts, upload photos, follow other users, and more. The project is built using Django and Django Rest Framework, providing a robust backend for handling data',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
 }
 
 SIMPLE_JWT = {
@@ -163,6 +174,7 @@ DATABASES = {
         'USER': os.environ.get('POSTGRES_USER'),
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
         'HOST': os.environ.get('POSTGRES_HOST'),
+        # 'HOST': 'localhost',
         'PORT': 5432,
     }
 }

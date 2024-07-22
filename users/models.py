@@ -66,20 +66,21 @@ class User(AbstractUser):
             self.slug = slugify(self.username)
             self.is_active = False
             self.referral_code = secrets.token_urlsafe(24)
-        if self.__username != self.username:
-            self.slug = slugify(self.username)
-            last_change = self.last_name_change
-            if last_change:
-                allow_to_change = last_change + timedelta(weeks=1)
-                diff = timezone.now() > allow_to_change
-                if diff:
-                    self.last_name_change = timezone.now()
+        else:
+            if self.__username != self.username:
+                self.slug = slugify(self.username)
+                last_change = self.last_name_change
+                if last_change:
+                    allow_to_change = last_change + timedelta(weeks=1)
+                    diff = timezone.now() > allow_to_change
+                    if diff:
+                        self.last_name_change = timezone.now()
+                    else:
+                        days_left = (allow_to_change - timezone.now()).days
+                        msg = f"You can change username after {days_left} days."
+                        raise ValidationError(msg)
                 else:
-                    days_left = (allow_to_change - timezone.now()).days
-                    msg = f"You can change username after {days_left} days."
-                    raise ValidationError(msg)
-            else:
-                self.last_name_change = timezone.now()
+                    self.last_name_change = timezone.now()
         super().save(*args, **kwargs)
 
 

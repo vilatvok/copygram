@@ -35,7 +35,7 @@ def save_post(user, post):
 
 def get_posts(user=None):
     vip_users = redis_client.smembers('active_vip_users')
-    
+
     posts = (
         Post.objects.annotated().
         annotate(
@@ -70,7 +70,7 @@ def get_archived_posts(user):
         posts = Post.objects.annotated().filter(id__in=posts_ids)
         cache.set(key, posts, 60 * 60)
     return posts
-    
+
 
 def get_archived_stories(user):
     key = 'archived_stories'
