@@ -1,12 +1,15 @@
-FROM python:3.10
+FROM python:3.12
 
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONBUFFERED=1
+ENV PATH="/root/.local/bin:${PATH}"
 
-RUN pip install --upgrade pip
-COPY requirements.txt /app/
-RUN pip install -r requirements.txt
+RUN curl -sSL https://install.python-poetry.org | python3 -
+COPY pyproject.toml .
+RUN poetry install --no-root
 
-COPY . /app/
+COPY . .
+
+ENTRYPOINT ["poetry", "run"]

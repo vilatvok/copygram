@@ -16,8 +16,6 @@ from users.models import Action
 
 redis_client = Redis(
     host='redis',
-    port=6379,
-    db=0,
     charset='utf-8',
     decode_responses=True,
 )

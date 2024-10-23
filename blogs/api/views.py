@@ -1,3 +1,4 @@
+import os
 from django.db import transaction
 from django.db.models import Q
 from django.utils.decorators import method_decorator
@@ -60,6 +61,7 @@ class PostViewSet(ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         post = self.get_object()
+        print(os.environ.get('DEBUG'))
         owner_privacy = post.owner.privacy
         excluded = []
         if post.owner != request.user:

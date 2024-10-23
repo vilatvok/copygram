@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     headers: {'X-CSRFToken': csrftoken},
                     mode: 'same-origin'
                 }
-                const comment_url = `http://localhost:8000/posts/${post_id}/delete-comment/${comment_id}/`
+                const comment_url = `https://copygram.com/posts/${post_id}/delete-comment/${comment_id}/`
                 // Make a request to delete the comment
                 fetch(comment_url, options)
                     .then(response => response.json())

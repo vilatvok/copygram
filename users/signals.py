@@ -29,7 +29,7 @@ def set_online_status(user, **kwargs):
             values_list('id', flat=True)
         )[:count]
         if len(users):
-            redis_client.sadd(f'user:{user.id}:recommendations', *users)
+            redis_client.sadd(redis_key, *users)
 
 
 @receiver(user_logged_out, sender=User)

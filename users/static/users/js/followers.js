@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
          fetch(url.replace('0', user_slug), options)
             .then(response => response.json())
             .then(data => {
+               console.log(followersElement.innerHTML)
                var total = parseInt(followersElement.innerHTML)
                switch (data.status) {
                   case 'Followed':

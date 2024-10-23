@@ -246,7 +246,7 @@ class PasswordResetAPIView(APIView):
         except User.DoesNotExist:
             return Response({'status': 'Not found'}, status.HTTP_404_NOT_FOUND)
         else:
-            link = f'http://127.0.0.1:8000/api/password-reset-confirm'
+            link = f'https://copygram.com/api/password-reset-confirm'
             send_reset_email(user, link)
             return Response({'status': 'Check email'}, status.HTTP_200_OK)
 
@@ -336,7 +336,7 @@ class ReferralViewSet(ListModelViewSet):
         response = {'result': response.data}
         code = request.user.referral_code
         response['code'] = code
-        response['invite_link'] = f'http://localhost:8000/api/users/?ref={code}'
+        response['invite_link'] = f'https://copygram.com/api/users/?ref={code}'
         return Response(response)
 
 

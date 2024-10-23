@@ -15,11 +15,6 @@ import socket
 
 from datetime import timedelta
 from pathlib import Path
-# from dotenv import load_dotenv
-
-
-# for local settings
-# load_dotenv('.env')
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,17 +24,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-DEBUG = os.environ.get('DEBUG')
+DEBUG = bool(int(os.getenv("DEBUG", 0)))
 
-ALLOWED_HOSTS = ['*'] 
+ALLOWED_HOSTS = ['copygram.com']
 
-CSRF_TRUSTED_ORIGINS = ['https://copygram.com', 'http://copygram.com:8080']
+CSRF_TRUSTED_ORIGINS = ['https://copygram.com']
 
 # Security
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
@@ -119,7 +115,13 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Copygram',
-    'DESCRIPTION': 'This project is a clone of the popular social media platform Instagram. It allows users to manage accounts, upload photos, follow other users, and more. The project is built using Django and Django Rest Framework, providing a robust backend for handling data',
+    'DESCRIPTION': 'This project is a clone of the \
+                popular social media platform Instagram. \
+                It allows users to manage accounts, \
+                upload photos, follow other users, and more. \
+                The project is built using Django and \
+                Django Rest Framework, providing a robust \
+                backend for handling data',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     # OTHER SETTINGS

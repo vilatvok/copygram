@@ -76,7 +76,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         request = self.context['request']
         ref = request.query_params.get('ref')
         user = User.objects.create_user(**validated_data)
-        link = f'http://127.0.0.1:8000/api/register-confirm'
+        link = f'https://copygram.com/api/register-confirm'
         send_reset_email(user, link, ref)
         return user
 

@@ -1,0 +1,139 @@
+x-nginx: &nginx
+  image: nginx:latest
+  restart: unless-stopped
+  networks:
+    - copygram-network
+  volumes:
+    - ./nginx:/etc/nginx/templates
+    - .:/app
+  ports:
+    - "8080:80"
+    - "443:443"
+
+
+x-backend: &backend
+  build: .
+  image: copygram
+  restart: unless-stopped
+  networks:
+    - copygram-network
+  volumes:
+    - .:/app
+  env_file:
+    - .env
+  ports:
+    - "8001:8000"
+  depends_on:
+    - db
+    - redis
+
+
+services:
+  backend-dev:
+    <<: *backend
+    container_name: backend-dev
+    profiles:
+      - dev
+    environment:
+      - DEBUG=1
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", 
+              "copygram.asgi:application", 
+              "--bind", "0.0.0.0:8000", "--reload"]
+  
+  backend-prod:
+    <<: *backend
+    container_name: backend-prod
+    environment:
+      - DEBUG=0
+    profiles:
+      - prod
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", 
+              "copygram.asgi:application", 
+              "--bind", "0.0.0.0:8000"]
+
+  db:
+    image: postgres:latest
+    container_name: db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d copygram"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - copygram-network
+    volumes:
+      - copygram-data:/var/lib/postgresql/data/
+    env_file:
+      - .env
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    networks:
+      - copygram-network
+
+  celery:
+    build: .
+    image: celery
+    container_name: task-queue
+    command: celery -A copygram worker -l info
+    networks:
+      - copygram-network
+    volumes: 
+      - .:/app
+    env_file:
+      - .env
+    profiles:
+      - dev
+      - prod
+
+  celerybeat:
+    build: .
+    image: celerybeat
+    container_name: task-scheduler
+    command: ["celery", "-A", "copygram", 
+              "beat", "-l", "info"]
+    networks:
+      - copygram-network
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - celery
+    profiles:
+      - dev
+      - prod
+
+  nginx-dev:
+    <<: *nginx
+    container_name: nginx-dev
+    environment:
+      - SERVICE=backend-dev
+    depends_on:
+      - backend-dev
+    profiles:
+      - dev
+  
+  nginx-prod:
+    <<: *nginx
+    container_name: nginx-prod
+    environment:
+      - SERVICE=backend-prod
+    depends_on:
+      - backend-prod
+    profiles:
+      - prod
+
+
+networks:
+  copygram-network:
+    driver: bridge
+    name: copygram-network
+
+
+volumes:
+  copygram-data:
+    driver: local
+    name: copygram-data

@@ -34,7 +34,7 @@ class RegisterView(CreateView):
 
     def form_valid(self, form):
         form = super().form_valid(form)
-        link = 'http://127.0.0.1:8000/register-confirm'
+        link = 'https://copygram.com/register-confirm'
         send_reset_email(self.object, link)
         messages.info(self.request, 'Check email and confirm user.')
         return form
@@ -138,7 +138,7 @@ class PasswordUserConfirmView(TemplateView):
         email = request.session.pop('email')
         if response == 'yes':
             user = User.objects.get(email=email)
-            link = 'http://127.0.0.1:8000/password-reset'
+            link = 'https://copygram.com/password-reset'
             send_reset_email(user, link)
             messages.info(
                 request,
