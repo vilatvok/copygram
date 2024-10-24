@@ -1,4 +1,6 @@
-from django.db import transaction
+import pandas as pd
+
+from django.db import transaction, connection
 from django.db.models import Q
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -6,9 +8,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 
 from common.utils import create_action, redis_client
-
 from users.models import User, Action, Follower, Block
-
 from blogs.models import Comment, Post
 
 
@@ -44,6 +44,14 @@ class Recommender:
             select_related('privacy')
         )
         return suggestions_users
+
+
+# def sql_to_pandas():
+#     with connection.cursor() as cursor:
+#         cursor.execute('SELECT * FROM users_user')
+#         columns = [col[0] for col in cursor.description]
+#         data = cursor.fetchall()
+#     return pd.DataFrame(data, columns=columns)
 
 
 def get_user_posts(user):
@@ -121,7 +129,7 @@ def follow_to_user(from_user, to_user):
         else:
             with transaction.atomic():
                 Follower.objects.create(from_user=from_user, to_user=to_user)
-                create_action(from_user, 'followed to you', to_user)
+                create_action(from_user, f'followed to you', to_user)
             recommender.add_suggestions(from_user, others)
             recommender.remove_suggestions(from_user, [to_user])
             user_following = User.objects.filter(followers__from_user=from_user)

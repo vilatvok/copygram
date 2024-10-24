@@ -1,0 +1,6 @@
+.env
+migrations
+media
+__pycache__
+staticfiles
+poetry.lock
